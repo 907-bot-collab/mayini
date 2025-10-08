@@ -157,7 +157,8 @@ strict_equality = true
 '''
 
 # Save updated pyproject.toml
-with open('updated_pyproject.toml', 'w') as f:
+with open('/absolute/path/to/updated_pyproject.toml', 'w') as f:
     f.write(updated_pyproject_content)
+
     
 print("Created updated pyproject.toml with comprehensive test configuration")

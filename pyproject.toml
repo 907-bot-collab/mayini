@@ -165,9 +165,9 @@ exclude_lines = [
     "if False:",
     "if TYPE_CHECKING:",
     "if __name__ == '__main__':",
-    "class .*\(Protocol\):",
-    "@(abc\.)?abstractmethod",
-    "@(abc\.)?abstractproperty",
+    "class .*\\(Protocol\\):",
+    "@(abc\\.)?abstractmethod",
+    "@(abc\\.)?abstractproperty",
     "except ImportError:",
     "pass"
 ]

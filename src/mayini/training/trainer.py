@@ -11,7 +11,6 @@ import json
 
 from ..tensor import Tensor
 from ..nn.modules import Module
-from ..nn.losses import LossFunction
 from ..optim.optimizers import Optimizer
 
 
@@ -236,14 +235,14 @@ class EarlyStopping:
 class Trainer:
     """Complete training framework with logging and checkpointing."""
     
-    def __init__(self, model: Module, optimizer: Optimizer, criterion: LossFunction):
+    def __init__(self, model: Module, optimizer: Optimizer, criterion: Module):
         """
         Initialize trainer.
         
         Args:
             model: Neural network model
             optimizer: Optimization algorithm
-            criterion: Loss function
+            criterion: Loss function (any Module that can compute loss)
         """
         self.model = model
         self.optimizer = optimizer
@@ -307,7 +306,7 @@ class Trainer:
                 if early_stopping is not None:
                     if early_stopping(val_loss, self.model):
                         if verbose:
-                            print(f"\\nEarly stopping at epoch {epoch+1}")
+                            print(f"\nEarly stopping at epoch {epoch+1}")
                         break
             
             # Record history

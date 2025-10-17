@@ -1,6 +1,3 @@
-"""
-Recurrent Neural Network components.
-"""
 import numpy as np
 from typing import Tuple, Optional
 from ..tensor import Tensor

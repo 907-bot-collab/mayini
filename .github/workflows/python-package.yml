@@ -1,14 +1,14 @@
-# Create an updated GitHub Actions workflow that will properly run the tests
-updated_workflow_content = '''# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python package
+name: mayini-framework
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -16,53 +16,48 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        
+        cache: 'pip'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install -e ".[dev]"
-        
+
     - name: Lint with ruff
       run: |
         # Stop the build if there are Python syntax errors or undefined names
         ruff check src/ --select=E9,F63,F7,F82 --show-source --statistics
         # Exit-zero treats all errors as warnings
         ruff check src/ --exit-zero --statistics
-        
+
     - name: Format check with black
       run: |
         black --check src/
-        
+
     - name: Type check with mypy (optional, may have issues)
       continue-on-error: true
       run: |
         mypy src/mayini --ignore-missing-imports
-        
+
     - name: Test with pytest
       run: |
         pytest tests/ -v --cov=mayini --cov-report=xml --cov-report=term-missing
-        
+
     - name: Upload coverage to Codecov (optional)
-      uses: codecov/codecov-action@v3
-      if: matrix.python-version == '3.10'
+      uses: codecov/codecov-action@v4
+      if: matrix.python-version == '3.11'
       with:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-'''
-
-# Save updated workflow
-with open('updated_python_package.yml', 'w') as f:
-    f.write(updated_workflow_content)
-    
-print("Created updated GitHub Actions workflow with comprehensive testing")
+        token: ${{ secrets.CODECOV_TOKEN }}

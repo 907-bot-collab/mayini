@@ -278,7 +278,16 @@ h_next = rnn_cell(x_t, h_t)
 from mayini.nn import LSTMCell
 
 lstm_cell = LSTMCell(input_size=100, hidden_size=128, bias=True)
-h_next, c_next = lstm_cell(x_t, (h_t, c_t))
+
+# Single timestep
+x_t = mn.Tensor(np.random.randn(32, 100))
+h_t = mn.Tensor(np.random.randn(32, 128))
+c_t = mn.Tensor(np.random.randn(32, 128))
+
+# ✅ FIX: Call .forward() directly
+h_next, c_next = lstm_cell.forward(x_t, (h_t, c_t))
+print(f"Next hidden: {h_next.shape}, Next cell: {c_next.shape}")
+
 ```
 
 #### GRU Cell
@@ -292,23 +301,41 @@ h_next, c_next = lstm_cell(x_t, (h_t, c_t))
 from mayini.nn import GRUCell
 
 gru_cell = GRUCell(input_size=100, hidden_size=128, bias=True)
-h_next = gru_cell(x_t, h_t)
+
+# Single timestep
+x_t = mn.Tensor(np.random.randn(32, 100))
+h_t = mn.Tensor(np.random.randn(32, 128))
+
+# ✅ FIX: Call .forward() directly
+h_next = gru_cell.forward(x_t, h_t)
+print(f"Next hidden state: {h_next.shape}")
+
 ```
 
 #### Multi-layer RNN
 ```python
 from mayini.nn import RNN
 
+# Multi-layer LSTM
 lstm_model = RNN(
     input_size=100,
     hidden_size=128,
     num_layers=2,
-    cell_type='lstm',  # 'rnn', 'lstm', or 'gru'
+    cell_type='lstm',
     dropout=0.2,
     batch_first=True
 )
 
-output, hidden_states = lstm_model(x_seq)
+# Process sequences
+x_seq = mn.Tensor(np.random.randn(32, 50, 100))  # (batch, seq_len, features)
+
+# ✅ FIX: This will work after you fix Module.__call__() in modules.py
+# OR use this temporary workaround:
+output, hidden_states = lstm_model.forward(x_seq)
+
+print(f"Output shape: {output.shape}")
+print(f"Number of hidden states: {len(hidden_states)}")
+
 ```
 
 ---
@@ -339,6 +366,7 @@ criterion = MAELoss(reduction='mean')
 
 ```python
 from mayini.nn import CrossEntropyLoss
+
 criterion = CrossEntropyLoss(reduction='mean')
 ```
 

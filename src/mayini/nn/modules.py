@@ -94,7 +94,7 @@ class Module(ABC):
         """Forward pass - must be implemented by subclasses."""
         pass
 
-    class Module(ABC):
+
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 

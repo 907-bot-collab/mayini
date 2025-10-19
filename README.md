@@ -505,17 +505,12 @@ for batch_X, batch_y in train_loader:
 ```python
 from mayini.training import Trainer
 
-trainer = Trainer(model, optimizer, criterion)
-
-history = trainer.fit(
-    train_loader,
-    epochs=10,
-    val_loader=val_loader,
-    early_stopping=None,
-    verbose=True,
-    save_best=True,
-    checkpoint_path='model.pkl'
+trainer = Trainer(
+    model,      # Neural network model (Module)
+    optimizer,  # Optimization algorithm (Optimizer)
+    criterion   # Loss function (Module)
 )
+
 ```
 
 **Trainer Methods:**
@@ -524,7 +519,19 @@ history = trainer.fit(
 - `predict()` - Make predictions
 - `save_checkpoint()` - Save model state
 - `load_checkpoint()` - Load model state
-
+  
+####fit()
+```python
+history = trainer.fit(
+    train_loader,              # Training data loader
+    epochs=10,                 # Number of training epochs
+    val_loader=None,           # Optional validation data loader
+    early_stopping=None,       # Optional early stopping callback
+    verbose=True,              # Print training progress
+    save_best=True,            # Save best model based on validation loss
+    checkpoint_path='model.pkl' # Path to save checkpoints
+)
+```
 #### Metrics
 ```python
 from mayini.training import Metrics
@@ -539,6 +546,17 @@ mse = Metrics.mse(predictions, targets)
 mae = Metrics.mae(predictions, targets)
 r2 = Metrics.r2_score(predictions, targets)
 ```
+#### evaluate()
+```python
+results = trainer.evaluate(
+    test_loader,    # Test data loader
+    detailed=True   # Compute detailed metrics
+)
+```
+#### predict()
+```python
+predictions = trainer.predict(X)  # Returns numpy array
+```
 
 #### Early Stopping
 ```python
@@ -546,7 +564,7 @@ from mayini.training import EarlyStopping
 
 early_stopping = EarlyStopping(
     patience=7,
-    min_delta=0.001,
+    min_delta=0.0,
     restore_best_weights=True,
     mode='min'  # 'min' for loss, 'max' for accuracy
 )
@@ -558,12 +576,70 @@ history = trainer.fit(
     early_stopping=early_stopping
 )
 ```
-
+---
+#### Metrics
+```python
+from mayini.training import Metrics
+```
+#### accuracy()
+```python
+accuracy = Metrics.accuracy(predictions, targets)
+# Returns: float (0.0 to 1.0)
+```
+#### precision_recall_f1()
+```python
+precision, recall, f1 = Metrics.precision_recall_f1(
+    predictions, 
+    targets, 
+    num_classes=10
+)
+# Returns: Three numpy arrays of shape (num_classes,)
+```
+#### confusion_matrix()
+```python
+cm = Metrics.confusion_matrix(predictions, targets, num_classes=10)
+# Returns: numpy array of shape (num_classes, num_classes)
+```
+#### r2_score()
+```python
+r2 = Metrics.r2_score(predictions, targets)
+```
 ---
 
 ## 💡 Complete Examples
 
-### Example 1: MNIST Classification
+### Example 1: Basic Traini
+
+```python
+import numpy as np
+import mayini as mn
+from mayini.nn import Sequential, Linear, ReLU, Softmax, CrossEntropyLoss
+from mayini.optim import Adam
+from mayini.training import DataLoader, Trainer
+
+# Build model
+model = Sequential(
+    Linear(784, 128, init_method='he'),
+    ReLU(),
+    Linear(128, 10),
+    Softmax(dim=1)
+)
+
+# Prepare data
+X_train = np.random.randn(5000, 784).astype(np.float32)
+y_train = np.random.randint(0, 10, 5000)
+
+train_loader = DataLoader(X_train, y_train, batch_size=128, shuffle=True)
+
+# Train
+optimizer = Adam(model.parameters(), lr=0.001)
+criterion = CrossEntropyLoss()
+trainer = Trainer(model, optimizer, criterion)
+
+history = trainer.fit(train_loader, epochs=20, verbose=True)
+```
+
+### Example 2: MNIST Classification
 
 ```python
 import mayini as mn
@@ -601,7 +677,7 @@ trainer = Trainer(model, optimizer, criterion)
 history = trainer.fit(train_loader, epochs=20, val_loader=val_loader, verbose=True)
 ```
 
-### Example 2: CNN for Image Classification
+### Example 3: CNN for Image Classification
 
 ```python
 from mayini.nn import Conv2D, MaxPool2D, Flatten, BatchNorm1d
@@ -629,7 +705,7 @@ cnn_model = Sequential(
 # Train similarly to Example 1
 ```
 
-### Example 3: LSTM for Sequence Classification
+### Example 4: LSTM for Sequence Classification
 
 ```python
 from mayini.nn import RNN
@@ -654,7 +730,7 @@ x_seq = mn.Tensor(np.random.randn(32, 50, 100))
 output, _ = lstm_model(x_seq)
 ```
 
-### Example 4: Custom Training Loop
+### Example 5: Custom Training Loop
 
 ```python
 # Manual training loop with learning rate scheduling
@@ -685,7 +761,164 @@ for epoch in range(50):
     
     print(f"Epoch {epoch+1}: Loss = {epoch_loss/len(train_loader):.4f}, LR = {optimizer.lr:.6f}")
 ```
+#### Example 6:Training with validation
+```python
+import numpy as np
+from mayini.nn import Sequential, Linear, ReLU, Dropout, Softmax, CrossEntropyLoss
+from mayini.optim import Adam
+from mayini.training import DataLoader, Trainer
 
+# Build model with dropout
+model = Sequential(
+    Linear(784, 512, init_method='he'),
+    ReLU(),
+    Dropout(0.3),
+    Linear(512, 256, init_method='he'),
+    ReLU(),
+    Dropout(0.3),
+    Linear(256, 10),
+    Softmax(dim=1)
+)
+
+# Prepare train and validation data
+X_train = np.random.randn(5000, 784).astype(np.float32)
+y_train = np.random.randint(0, 10, 5000)
+X_val = np.random.randn(1000, 784).astype(np.float32)
+y_val = np.random.randint(0, 10, 1000)
+
+train_loader = DataLoader(X_train, y_train, batch_size=128, shuffle=True)
+val_loader = DataLoader(X_val, y_val, batch_size=128, shuffle=False)
+
+# Train with validation
+optimizer = Adam(model.parameters(), lr=0.001)
+criterion = CrossEntropyLoss()
+trainer = Trainer(model, optimizer, criterion)
+
+history = trainer.fit(
+    train_loader,
+    epochs=30,
+    val_loader=val_loader,
+    verbose=True
+)
+
+# Plot training curves (if matplotlib available)
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(12, 4))
+
+plt.subplot(1, 2, 1)
+plt.plot(history['train_loss'], label='Train Loss')
+plt.plot(history['val_loss'], label='Val Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.title('Training and Validation Loss')
+
+plt.subplot(1, 2, 2)
+plt.plot(history['train_acc'], label='Train Acc')
+plt.plot(history['val_acc'], label='Val Acc')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.title('Training and Validation Accuracy')
+
+plt.tight_layout()
+plt.show()
+```
+### Example 7: Evaluation and Testinh
+```python
+import numpy as np
+from mayini.training import Trainer, DataLoader, Metrics
+
+# Assume model is already trained (from previous examples)
+
+# Prepare test data
+X_test = np.random.randn(1000, 784).astype(np.float32)
+y_test = np.random.randint(0, 10, 1000)
+test_loader = DataLoader(X_test, y_test, batch_size=128, shuffle=False)
+
+# Evaluate
+results = trainer.evaluate(test_loader, detailed=True)
+
+print("Test Results:")
+print(f"Test Loss: {results['test_loss']:.4f}")
+print(f"Test Accuracy: {results['accuracy']:.4f}")
+
+print("\nPer-class Metrics:")
+for i in range(10):
+    print(f"Class {i}:")
+    print(f"  Precision: {results['precision'][i]:.3f}")
+    print(f"  Recall:    {results['recall'][i]:.3f}")
+    print(f"  F1-Score:  {results['f1_score'][i]:.3f}")
+
+print("\nConfusion Matrix:")
+print(results['confusion_matrix'])
+
+# Make predictions on new data
+X_new = np.random.randn(10, 784).astype(np.float32)
+predictions = trainer.predict(X_new)
+predicted_classes = np.argmax(predictions, axis=1)
+print(f"\nPredicted classes: {predicted_classes}")
+```
+### Example 8: Custom Training Loop
+```python
+import numpy as np
+from mayini.nn import Sequential, Linear, ReLU, Softmax, CrossEntropyLoss
+from mayini.optim import Adam
+from mayini.training import DataLoader
+import mayini as mn
+
+# Build model
+model = Sequential(
+    Linear(784, 256, init_method='he'),
+    ReLU(),
+    Linear(256, 10),
+    Softmax(dim=1)
+)
+
+# Prepare data
+X_train = np.random.randn(1000, 784).astype(np.float32)
+y_train = np.random.randint(0, 10, 1000)
+train_loader = DataLoader(X_train, y_train, batch_size=64, shuffle=True)
+
+# Setup
+optimizer = Adam(model.parameters(), lr=0.001)
+criterion = CrossEntropyLoss()
+
+# Custom training loop
+history = {'train_loss': [], 'train_acc': []}
+
+for epoch in range(20):
+    model.train()
+    epoch_loss = 0
+    correct = 0
+    total = 0
+    
+    for batch_X, batch_y in train_loader:
+        # Forward pass
+        predictions = model(batch_X)
+        loss = criterion(predictions, batch_y)
+        
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        # Track metrics
+        epoch_loss += loss.item()
+        pred_classes = np.argmax(predictions.data, axis=1)
+        correct += np.sum(pred_classes == batch_y.data.flatten())
+        total += len(batch_y.data)
+    
+    # Calculate epoch metrics
+    avg_loss = epoch_loss / len(train_loader)
+    accuracy = correct / total
+    
+    history['train_loss'].append(avg_loss)
+    history['train_acc'].append(accuracy)
+    
+    print(f"Epoch {epoch+1}/20 - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}")
+```
 ---
 
 ## 📂 Module Structure

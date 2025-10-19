@@ -6,7 +6,15 @@ Neural Network components for MAYINI Deep Learning Framework.
 from .modules import Module, Sequential
 
 # Core layers
-from .modules import Linear, Conv2D, MaxPool2D, AvgPool2D, Dropout, BatchNorm1d, Flatten
+from .modules import (
+    Linear,
+    Conv2D,
+    MaxPool2D,
+    AvgPool2D,
+    Dropout,
+    BatchNorm1d,
+    Flatten,
+)
 
 # Activation modules
 from .activations import ReLU, Sigmoid, Tanh, Softmax, GELU, LeakyReLU
@@ -19,17 +27,32 @@ from .losses import MSELoss, MAELoss, CrossEntropyLoss, BCELoss, HuberLoss
 
 __all__ = [
     # Base classes
-    'Module', 'Sequential',
-    
+    "Module",
+    "Sequential",
     # Core layers
-    'Linear', 'Conv2D', 'MaxPool2D', 'AvgPool2D', 'Dropout', 'BatchNorm1d', 'Flatten',
-    
+    "Linear",
+    "Conv2D",
+    "MaxPool2D",
+    "AvgPool2D",
+    "Dropout",
+    "BatchNorm1d",
+    "Flatten",
     # Activations
-    'ReLU', 'Sigmoid', 'Tanh', 'Softmax', 'GELU', 'LeakyReLU',
-    
+    "ReLU",
+    "Sigmoid",
+    "Tanh",
+    "Softmax",
+    "GELU",
+    "LeakyReLU",
     # RNN components
-    'RNNCell', 'LSTMCell', 'GRUCell', 'RNN',
-    
+    "RNNCell",
+    "LSTMCell",
+    "GRUCell",
+    "RNN",
     # Loss functions
-    'MSELoss', 'MAELoss', 'CrossEntropyLoss', 'BCELoss', 'HuberLoss',
+    "MSELoss",
+    "MAELoss",
+    "CrossEntropyLoss",
+    "BCELoss",
+    "HuberLoss",
 ]

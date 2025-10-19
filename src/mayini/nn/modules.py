@@ -94,8 +94,10 @@ class Module(ABC):
         """Forward pass - must be implemented by subclasses."""
         pass
 
-    def __call__(self, x: Tensor) -> Tensor:
-        return self.forward(x)
+    class Module(ABC):
+    def __call__(self, *args, **kwargs):
+        return self.forward(*args, **kwargs)
+
 
     def parameters(self) -> List[Tensor]:
         """Return all parameters in this module and submodules."""

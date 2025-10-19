@@ -42,5 +42,58 @@ from .nn import (
 from .optim import SGD, Adam, AdamW, RMSprop
 
 # Training utilities
-from .training import DataLoad
+from .training import DataLoader, Trainer, Metrics, EarlyStopping
 
+# Activation functions (functional interface)
+from .nn.activations import relu, sigmoid, tanh, softmax, gelu, leaky_relu
+
+__all__ = [
+    # Core
+    "Tensor",
+    # Base classes
+    "Module",
+    "Sequential",
+    # Layers
+    "Linear",
+    "Conv2D",
+    "MaxPool2D",
+    "AvgPool2D",
+    "Dropout",
+    "BatchNorm1d",
+    "Flatten",
+    # Activations (modules)
+    "ReLU",
+    "Sigmoid",
+    "Tanh",
+    "Softmax",
+    "GELU",
+    "LeakyReLU",
+    # Activations (functions)
+    "relu",
+    "sigmoid",
+    "tanh",
+    "softmax",
+    "gelu",
+    "leaky_relu",
+    # RNN components
+    "RNNCell",
+    "LSTMCell",
+    "GRUCell",
+    "RNN",
+    # Loss functions
+    "MSELoss",
+    "MAELoss",
+    "CrossEntropyLoss",
+    "BCELoss",
+    "HuberLoss",
+    # Optimizers
+    "SGD",
+    "Adam",
+    "AdamW",
+    "RMSprop",
+    # Training
+    "DataLoader",
+    "Trainer",
+    "Metrics",
+    "EarlyStopping",
+]

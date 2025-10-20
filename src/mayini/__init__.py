@@ -97,3 +97,23 @@ __all__ = [
     "Metrics",
     "EarlyStopping",
 ]
+"""mayini/__init__.py - Updated"""
+from . import nn
+from . import ml
+from . import neat
+from . import preprocessing
+from . import optim
+from . import training
+from .tensor import Tensor
+
+__version__ = "0.2.0"
+
+__all__ = [
+    'Tensor',
+    'nn',
+    'ml',
+    'neat',
+    'preprocessing',
+    'optim',
+    'training'
+]

@@ -825,7 +825,7 @@ plt.title('Training and Validation Accuracy')
 plt.tight_layout()
 plt.show()
 ```
-### Example 7: Evaluation and Testinh
+### Example 7: Evaluation and Testing
 ```python
 import numpy as np
 from mayini.training import Trainer, DataLoader, Metrics

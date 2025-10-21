@@ -608,7 +608,7 @@ r2 = Metrics.r2_score(predictions, targets)
 
 ## 💡 Complete Examples
 
-### Example 1: Basic Traini
+### Example 1: Basic Training
 
 ```python
 import numpy as np

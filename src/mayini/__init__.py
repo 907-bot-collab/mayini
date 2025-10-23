@@ -117,3 +117,15 @@ __all__ = [
     'optim',
     'training'
 ]
+from . import preprocessing
+
+# Add to __all__ list:
+__all__ = [
+    'Tensor',
+    'nn',
+    'optim',
+    'training',
+    'ml',
+    'neat',
+    'preprocessing',  # ADD THIS
+]

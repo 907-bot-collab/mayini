@@ -1,8 +1,3 @@
-"""
-src/mayini/preprocessing/numerical/imputers.py
-Missing value imputation strategies
-"""
-
 import numpy as np
 from ..base import BaseTransformer
 
@@ -14,11 +9,25 @@ class SimpleImputer(BaseTransformer):
     Parameters:
     -----------
     strategy : str, default='mean'
-        The imputation strategy ('mean', 'median', 'most_frequent', 'constant')
+        The imputation strategy:
+        - 'mean': Replace using mean (numerical only)
+        - 'median': Replace using median (numerical only)
+        - 'most_frequent': Replace using mode
+        - 'constant': Replace with fill_value
     fill_value : scalar, default=None
-        When strategy='constant', fill_value is used to replace missing values
+        Value to use for strategy='constant'
     missing_values : number, default=np.nan
-        The placeholder for the missing values
+        Placeholder for missing values
+
+    Example:
+    --------
+    >>> from mayini.preprocessing import SimpleImputer
+    >>> imputer = SimpleImputer(strategy='mean')
+    >>> X = np.array([[1, 2], [np.nan, 3], [7, 6]])
+    >>> imputer.fit_transform(X)
+    array([[1., 2.],
+           [4., 3.],
+           [7., 6.]])
     """
 
     def __init__(self, strategy='mean', fill_value=None, missing_values=np.nan):
@@ -41,21 +50,20 @@ class SimpleImputer(BaseTransformer):
         return values[counts.argmax()]
 
     def fit(self, X, y=None):
-        """Compute the statistics for imputation"""
+        """Compute imputation statistics"""
         X = np.asarray(X, dtype=np.float64)
         if X.ndim == 1:
             X = X.reshape(-1, 1)
 
         mask = self._get_mask(X)
         n_features = X.shape[1]
-
         self.statistics_ = np.zeros(n_features)
 
         for i in range(n_features):
             column = X[:, i]
             column_mask = mask[:, i]
 
-            if not column_mask.all():  # If not all values are missing
+            if not column_mask.all():  # Not all missing
                 valid_values = column[~column_mask]
 
                 if self.strategy == 'mean':
@@ -71,14 +79,13 @@ class SimpleImputer(BaseTransformer):
                 else:
                     raise ValueError(f"Unknown strategy: {self.strategy}")
             else:
-                # If all values are missing, use 0 or fill_value
                 self.statistics_[i] = self.fill_value if self.fill_value is not None else 0
 
         self.is_fitted_ = True
         return self
 
     def transform(self, X):
-        """Impute all missing values in X"""
+        """Impute missing values"""
         self._check_is_fitted()
         X = np.asarray(X, dtype=np.float64).copy()
 
@@ -100,11 +107,18 @@ class KNNImputer(BaseTransformer):
     Parameters:
     -----------
     n_neighbors : int, default=5
-        Number of neighboring samples to use
+        Number of neighbors to use
     weights : str, default='uniform'
         Weight function ('uniform' or 'distance')
     missing_values : number, default=np.nan
-        The placeholder for missing values
+        Placeholder for missing values
+
+    Example:
+    --------
+    >>> from mayini.preprocessing import KNNImputer
+    >>> imputer = KNNImputer(n_neighbors=2)
+    >>> X = np.array([[1, 2, np.nan], [3, 4, 3], [np.nan, 6, 5]])
+    >>> imputer.fit_transform(X)
     """
 
     def __init__(self, n_neighbors=5, weights='uniform', missing_values=np.nan):
@@ -124,11 +138,11 @@ class KNNImputer(BaseTransformer):
     def _euclidean_distance(self, x1, x2, valid_mask):
         """Compute distance only on valid features"""
         diff = (x1 - x2) ** 2
-        diff = diff * valid_mask  # Only consider valid features
+        diff = diff * valid_mask
         return np.sqrt(np.sum(diff))
 
     def fit(self, X, y=None):
-        """Fit the imputer on X"""
+        """Fit the imputer"""
         X = np.asarray(X, dtype=np.float64)
         if X.ndim == 1:
             X = X.reshape(-1, 1)
@@ -138,7 +152,7 @@ class KNNImputer(BaseTransformer):
         return self
 
     def transform(self, X):
-        """Impute all missing values in X"""
+        """Impute missing values using KNN"""
         self._check_is_fitted()
         X = np.asarray(X, dtype=np.float64).copy()
 
@@ -147,29 +161,24 @@ class KNNImputer(BaseTransformer):
 
         mask = self._get_mask(X)
 
-        # Impute each sample
         for i in range(X.shape[0]):
             missing_features = mask[i]
 
             if not missing_features.any():
                 continue
 
-            # Find k nearest neighbors
             valid_features = ~missing_features
-
             distances = []
+
             for j in range(self.X_fit_.shape[0]):
                 if i == j:
                     continue
-
-                # Only compute distance on valid features
                 dist = self._euclidean_distance(X[i], self.X_fit_[j], valid_features)
                 distances.append((dist, j))
 
             distances.sort(key=lambda x: x[0])
             k_nearest = distances[:self.n_neighbors]
 
-            # Impute missing features
             for feature_idx in np.where(missing_features)[0]:
                 neighbor_values = []
                 neighbor_weights = []
@@ -177,24 +186,15 @@ class KNNImputer(BaseTransformer):
                 for dist, neighbor_idx in k_nearest:
                     if not self._get_mask(self.X_fit_[[neighbor_idx]])[0, feature_idx]:
                         neighbor_values.append(self.X_fit_[neighbor_idx, feature_idx])
-
-                        if self.weights == 'distance':
-                            weight = 1 / (dist + 1e-10)
-                        else:
-                            weight = 1
+                        weight = 1 / (dist + 1e-10) if self.weights == 'distance' else 1
                         neighbor_weights.append(weight)
 
                 if neighbor_values:
                     X[i, feature_idx] = np.average(neighbor_values, weights=neighbor_weights)
                 else:
-                    # If no neighbors have valid value, use column mean
                     valid_values = self.X_fit_[:, feature_idx][
                         ~self._get_mask(self.X_fit_[:, [feature_idx]]).flatten()
                     ]
-                    if len(valid_values) > 0:
-                        X[i, feature_idx] = np.mean(valid_values)
-                    else:
-                        X[i, feature_idx] = 0
+                    X[i, feature_idx] = np.mean(valid_values) if len(valid_values) > 0 else 0
 
         return X
-

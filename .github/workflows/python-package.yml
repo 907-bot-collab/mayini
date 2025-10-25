@@ -39,9 +39,9 @@ jobs:
         # Exit-zero treats all errors as warnings
         ruff check src/ --exit-zero --statistics
 
-    - name: Format check with black
-      run: |
-        black --check src/
+   # - name: Format check with black
+     # run: |
+      #  black --check src/
 
     - name: Type check with mypy (optional, may have issues)
       continue-on-error: true

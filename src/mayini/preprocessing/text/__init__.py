@@ -1,6 +1,6 @@
-from .vectorizers import CountVectorizer, TfidfVectorizer
+from .vectorizers import TfidfVectorizer, CountVectorizer
 
 __all__ = [
-    'CountVectorizer',
-    'TfidfVectorizer',
+    "TfidfVectorizer",
+    "CountVectorizer",
 ]

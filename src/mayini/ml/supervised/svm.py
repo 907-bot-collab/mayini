@@ -8,8 +8,8 @@ class LinearSVM(BaseClassifier):
 
     Uses gradient descent with hinge loss
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     C : float, default=1.0
         Regularization parameter
     learning_rate : float, default=0.001
@@ -17,8 +17,8 @@ class LinearSVM(BaseClassifier):
     n_iterations : int, default=1000
         Number of training iterations
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.ml import LinearSVM
     >>> X = np.array([[1, 2], [2, 3], [3, 1], [6, 4], [7, 6], [8, 5]])
     >>> y = np.array([0, 0, 0, 1, 1, 1])
@@ -52,11 +52,14 @@ class LinearSVM(BaseClassifier):
 
                 if condition:
                     # No hinge loss
-                    self.weights -= self.learning_rate * (2 * (1 / self.n_iterations) * self.weights)
+                    self.weights -= self.learning_rate * (
+                        2 * (1 / self.n_iterations) * self.weights
+                    )
                 else:
                     # Hinge loss
                     self.weights -= self.learning_rate * (
-                        2 * (1 / self.n_iterations) * self.weights - np.dot(x_i, y_[idx])
+                        2 * (1 / self.n_iterations) * self.weights
+                        - np.dot(x_i, y_[idx])
                     )
                     self.bias -= self.learning_rate * y_[idx]
 
@@ -76,8 +79,8 @@ class SVC(BaseClassifier):
     """
     Support Vector Classification with kernel trick
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     C : float, default=1.0
         Regularization parameter
     kernel : str, default='rbf'
@@ -87,14 +90,14 @@ class SVC(BaseClassifier):
     degree : int, default=3
         Degree for polynomial kernel
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.ml import SVC
     >>> svc = SVC(kernel='rbf', C=1.0)
     >>> svc.fit(X_train, y_train)
     """
 
-    def __init__(self, C=1.0, kernel='rbf', gamma='scale', degree=3):
+    def __init__(self, C=1.0, kernel="rbf", gamma="scale", degree=3):
         super().__init__()
         self.C = C
         self.kernel = kernel
@@ -107,13 +110,17 @@ class SVC(BaseClassifier):
 
     def _kernel_function(self, X1, X2):
         """Compute kernel matrix"""
-        if self.kernel == 'linear':
+        if self.kernel == "linear":
             return np.dot(X1, X2.T)
-        elif self.kernel == 'rbf':
-            gamma = self.gamma if self.gamma != 'scale' else 1.0 / X1.shape[1]
-            sq_dists = np.sum(X1**2, axis=1).reshape(-1, 1) + np.sum(X2**2, axis=1) - 2 * np.dot(X1, X2.T)
+        elif self.kernel == "rbf":
+            gamma = self.gamma if self.gamma != "scale" else 1.0 / X1.shape[1]
+            sq_dists = (
+                np.sum(X1**2, axis=1).reshape(-1, 1)
+                + np.sum(X2**2, axis=1)
+                - 2 * np.dot(X1, X2.T)
+            )
             return np.exp(-gamma * sq_dists)
-        elif self.kernel == 'poly':
+        elif self.kernel == "poly":
             return (np.dot(X1, X2.T) + 1) ** self.degree
         else:
             raise ValueError(f"Unknown kernel: {self.kernel}")
@@ -155,8 +162,8 @@ class SVR(BaseRegressor):
     """
     Support Vector Regression
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     C : float, default=1.0
         Regularization parameter
     epsilon : float, default=0.1
@@ -164,14 +171,14 @@ class SVR(BaseRegressor):
     kernel : str, default='rbf'
         Kernel type
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.ml import SVR
     >>> svr = SVR(kernel='rbf', C=1.0, epsilon=0.1)
     >>> svr.fit(X_train, y_train)
     """
 
-    def __init__(self, C=1.0, epsilon=0.1, kernel='rbf', gamma='scale'):
+    def __init__(self, C=1.0, epsilon=0.1, kernel="rbf", gamma="scale"):
         super().__init__()
         self.C = C
         self.epsilon = epsilon
@@ -183,11 +190,15 @@ class SVR(BaseRegressor):
 
     def _kernel_function(self, X1, X2):
         """Compute kernel matrix"""
-        if self.kernel == 'linear':
+        if self.kernel == "linear":
             return np.dot(X1, X2.T)
-        elif self.kernel == 'rbf':
-            gamma = self.gamma if self.gamma != 'scale' else 1.0 / X1.shape[1]
-            sq_dists = np.sum(X1**2, axis=1).reshape(-1, 1) + np.sum(X2**2, axis=1) - 2 * np.dot(X1, X2.T)
+        elif self.kernel == "rbf":
+            gamma = self.gamma if self.gamma != "scale" else 1.0 / X1.shape[1]
+            sq_dists = (
+                np.sum(X1**2, axis=1).reshape(-1, 1)
+                + np.sum(X2**2, axis=1)
+                - 2 * np.dot(X1, X2.T)
+            )
             return np.exp(-gamma * sq_dists)
         else:
             raise ValueError(f"Unknown kernel: {self.kernel}")
@@ -211,4 +222,3 @@ class SVR(BaseRegressor):
 
         K = self._kernel_function(X, self.support_vectors_)
         return np.dot(K, self.alphas_) + self.b_
-

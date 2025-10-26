@@ -2,62 +2,73 @@ import numpy as np
 from ..base import BaseTransformer
 
 
-class CorrelationThreshold(BaseTransformer):
+class CorrelationSelector(BaseTransformer):
     """
-    Remove highly correlated features
+    Select features based on correlation with target
 
-    Parameters:
-    -----------
-    threshold : float, default=0.9
-        Correlation threshold above which features are removed
+    Parameters
+    ----------
+    threshold : float, default=0.5
+        Minimum absolute correlation with target
+    method : str, default='pearson'
+        Correlation method ('pearson' or 'spearman')
 
-    Example:
-    --------
-    >>> from mayini.preprocessing import CorrelationThreshold
-    >>> selector = CorrelationThreshold(threshold=0.95)
-    >>> X = np.array([[1, 1, 1], [2, 2, 3], [3, 3, 2], [4, 4, 4]])
-    >>> selector.fit_transform(X)
+    Example
+    -------
+    >>> from mayini.preprocessing import CorrelationSelector
+    >>> selector = CorrelationSelector(threshold=0.3)
+    >>> X = [[1, 2, 3], [2, 4, 6], [3, 6, 9]]
+    >>> y = [1, 2, 3]
+    >>> X_selected = selector.fit_transform(X, y)
     """
 
-    def __init__(self, threshold=0.9):
+    def __init__(self, threshold=0.5, method="pearson"):
         super().__init__()
         self.threshold = threshold
+        self.method = method
+        self.correlations_ = None
         self.selected_features_ = None
 
-    def fit(self, X, y=None):
-        """Identify highly correlated features"""
-        X = np.asarray(X, dtype=np.float64)
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
+    def fit(self, X, y):
+        """Compute correlations with target"""
+        if y is None:
+            raise ValueError("CorrelationSelector requires target y")
 
-        corr_matrix = np.corrcoef(X.T)
-        n_features = X.shape[1]
-        to_keep = np.ones(n_features, dtype=bool)
+        X, y = self._validate_input(X, y)
 
-        for i in range(n_features):
-            if not to_keep[i]:
-                continue
+        self.correlations_ = []
+        for col in range(X.shape[1]):
+            if self.method == "pearson":
+                corr = np.corrcoef(X[:, col], y)[0, 1]
+            elif self.method == "spearman":
+                # Spearman correlation (rank-based)
+                from scipy.stats import spearmanr
 
-            for j in range(i + 1, n_features):
-                if abs(corr_matrix[i, j]) > self.threshold:
-                    to_keep[j] = False
+                corr, _ = spearmanr(X[:, col], y)
+            else:
+                raise ValueError(f"Unknown method: {self.method}")
 
-        self.selected_features_ = to_keep
+            # Handle NaN correlations
+            if np.isnan(corr):
+                corr = 0.0
+
+            self.correlations_.append(abs(corr))
+
+        self.correlations_ = np.array(self.correlations_)
+        self.selected_features_ = self.correlations_ >= self.threshold
+
         self.is_fitted_ = True
         return self
 
     def transform(self, X):
-        """Remove correlated features"""
+        """Select features based on correlation"""
         self._check_is_fitted()
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
-
+        X, _ = self._validate_input(X)
         return X[:, self.selected_features_]
 
-    def get_support(self):
-        """Get mask of selected features"""
+    def get_support(self, indices=False):
+        """Get mask or indices of selected features"""
         self._check_is_fitted()
+        if indices:
+            return np.where(self.selected_features_)[0]
         return self.selected_features_
-

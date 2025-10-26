@@ -1,66 +1,72 @@
-"""Automated preprocessing detection and application"""
 import numpy as np
+from .base import BaseTransformer
 from .numerical.scalers import StandardScaler
-from .categorical.encoders import LabelEncoder
+from .numerical.imputers import SimpleImputer
 
-class AutoPreprocessor:
-    def __init__(self):
-        self.column_types_ = None
-        self.transformers_ = {}
-        self.is_fitted_ = False
 
-    def detect_column_types(self, X):
-        column_types = []
+class AutoPreprocessor(BaseTransformer):
+    """
+    Automatically preprocess data
 
-        for col in range(X.shape):
-            column = X[:, col]
+    Applies common preprocessing steps automatically
 
-            try:
-                # Try to convert to numeric
-                numeric_col = column.astype(float)
-                column_types.append('numerical')
-            except:
-                # Categorical if conversion fails
-                column_types.append('categorical')
+    Parameters
+    ----------
+    scaling : bool, default=True
+        Whether to apply scaling
+    imputation : bool, default=True
+        Whether to impute missing values
+    imputation_strategy : str, default='mean'
+        Imputation strategy
 
-        return column_types
+    Example
+    -------
+    >>> from mayini.preprocessing import AutoPreprocessor
+    >>> auto = AutoPreprocessor()
+    >>> X_preprocessed = auto.fit_transform(X)
+    """
+
+    def __init__(self, scaling=True, imputation=True, imputation_strategy="mean"):
+        super().__init__()
+        self.scaling = scaling
+        self.imputation = imputation
+        self.imputation_strategy = imputation_strategy
+        self.imputer_ = None
+        self.scaler_ = None
+        self.steps_ = []
 
     def fit(self, X, y=None):
-        X = np.asarray(X)
+        """Fit preprocessing steps"""
+        X, _ = self._validate_input(X)
 
-        # Detect column types
-        self.column_types_ = self.detect_column_types(X)
+        self.steps_ = []
 
-        # Fit appropriate transformers
-        for col, col_type in enumerate(self.column_types_):
-            if col_type == 'numerical':
-                scaler = StandardScaler()
-                scaler.fit(X[:, col].reshape(-1, 1))
-                self.transformers_[col] = scaler
-            elif col_type == 'categorical':
-                encoder = LabelEncoder()
-                encoder.fit(X[:, col])
-                self.transformers_[col] = encoder
+        # Check for missing values
+        if self.imputation and np.any(np.isnan(X)):
+            self.imputer_ = SimpleImputer(strategy=self.imputation_strategy)
+            X = self.imputer_.fit_transform(X)
+            self.steps_.append(("imputation", self.imputer_))
+
+        # Apply scaling
+        if self.scaling:
+            self.scaler_ = StandardScaler()
+            X = self.scaler_.fit_transform(X)
+            self.steps_.append(("scaling", self.scaler_))
 
         self.is_fitted_ = True
         return self
 
     def transform(self, X):
-        if not self.is_fitted_:
-            raise RuntimeError("AutoPreprocessor must be fitted first")
+        """Apply preprocessing steps"""
+        self._check_is_fitted()
+        X, _ = self._validate_input(X)
 
-        X = np.asarray(X)
-        transformed_cols = []
+        for name, transformer in self.steps_:
+            X = transformer.transform(X)
 
-        for col in range(X.shape):
-            if col in self.transformers_:
-                transformed = self.transformers_[col].transform(X[:, col].reshape(-1, 1))
-                transformed_cols.append(transformed.flatten())
-            else:
-                transformed_cols.append(X[:, col])
+        return X
 
-        return np.column_stack(transformed_cols)
-
-    def fit_transform(self, X, y=None):
-        return self.fit(X, y).transform(X)
-
+    def get_steps(self):
+        """Get applied preprocessing steps"""
+        self._check_is_fitted()
+        return [(name, type(transformer).__name__) for name, transformer in self.steps_]

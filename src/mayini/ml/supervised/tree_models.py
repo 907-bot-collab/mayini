@@ -4,7 +4,10 @@ from ..base import BaseClassifier, BaseRegressor
 
 class Node:
     """Decision tree node"""
-    def __init__(self, feature=None, threshold=None, left=None, right=None, value=None):
+
+    def __init__(
+        self, feature=None, threshold=None, left=None, right=None, value=None
+    ):
         self.feature = feature
         self.threshold = threshold
         self.left = left
@@ -12,6 +15,7 @@ class Node:
         self.value = value
 
     def is_leaf(self):
+        """Check if node is a leaf"""
         return self.value is not None
 
 
@@ -19,8 +23,8 @@ class DecisionTreeClassifier(BaseClassifier):
     """
     Decision Tree Classifier using CART algorithm
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     max_depth : int, default=None
         Maximum depth of the tree
     min_samples_split : int, default=2
@@ -29,9 +33,21 @@ class DecisionTreeClassifier(BaseClassifier):
         Minimum samples required at leaf
     criterion : str, default='gini'
         Split criterion ('gini' or 'entropy')
+
+    Example
+    -------
+    >>> from mayini.ml import DecisionTreeClassifier
+    >>> dt = DecisionTreeClassifier(max_depth=5)
+    >>> dt.fit(X_train, y_train)
     """
 
-    def __init__(self, max_depth=None, min_samples_split=2, min_samples_leaf=1, criterion='gini'):
+    def __init__(
+        self,
+        max_depth=None,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        criterion="gini",
+    ):
         super().__init__()
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
@@ -48,7 +64,7 @@ class DecisionTreeClassifier(BaseClassifier):
             return 0
         _, counts = np.unique(y, return_counts=True)
         probabilities = counts / m
-        return 1 - np.sum(probabilities ** 2)
+        return 1 - np.sum(probabilities**2)
 
     def _entropy(self, y):
         """Calculate entropy"""
@@ -61,7 +77,7 @@ class DecisionTreeClassifier(BaseClassifier):
 
     def _impurity(self, y):
         """Calculate impurity based on criterion"""
-        if self.criterion == 'gini':
+        if self.criterion == "gini":
             return self._gini(y)
         else:
             return self._entropy(y)
@@ -88,14 +104,21 @@ class DecisionTreeClassifier(BaseClassifier):
             thresholds = np.unique(X[:, feature])
 
             for threshold in thresholds:
-                X_left, X_right, y_left, y_right = self._split(X, y, feature, threshold)
+                X_left, X_right, y_left, y_right = self._split(
+                    X, y, feature, threshold
+                )
 
-                if len(y_left) < self.min_samples_leaf or len(y_right) < self.min_samples_leaf:
+                if (
+                    len(y_left) < self.min_samples_leaf
+                    or len(y_right) < self.min_samples_leaf
+                ):
                     continue
 
                 # Calculate information gain
                 n_left, n_right = len(y_left), len(y_right)
-                child_impurity = (n_left / n_samples) * self._impurity(y_left) +                                 (n_right / n_samples) * self._impurity(y_right)
+                child_impurity = (n_left / n_samples) * self._impurity(
+                    y_left
+                ) + (n_right / n_samples) * self._impurity(y_right)
                 gain = parent_impurity - child_impurity
 
                 if gain > best_gain:
@@ -111,7 +134,11 @@ class DecisionTreeClassifier(BaseClassifier):
         n_classes = len(np.unique(y))
 
         # Stopping criteria
-        if (self.max_depth is not None and depth >= self.max_depth) or            n_classes == 1 or n_samples < self.min_samples_split:
+        if (
+            (self.max_depth is not None and depth >= self.max_depth)
+            or n_classes == 1
+            or n_samples < self.min_samples_split
+        ):
             leaf_value = np.bincount(y.astype(int)).argmax()
             return Node(value=leaf_value)
 
@@ -127,8 +154,12 @@ class DecisionTreeClassifier(BaseClassifier):
         left_subtree = self._build_tree(X_left, y_left, depth + 1)
         right_subtree = self._build_tree(X_right, y_right, depth + 1)
 
-        return Node(feature=best_feature, threshold=best_threshold,
-                   left=left_subtree, right=right_subtree)
+        return Node(
+            feature=best_feature,
+            threshold=best_threshold,
+            left=left_subtree,
+            right=right_subtree,
+        )
 
     def fit(self, X, y):
         """Fit decision tree"""
@@ -161,18 +192,29 @@ class DecisionTreeClassifier(BaseClassifier):
         return np.array([self.classes_[int(p)] for p in predictions])
 
 
+# ============================================================================
+# FILE 14: src/mayini/ml/supervised/tree_models.py (continued)
+# BLACK-FORMATTED VERSION (Part 2 - DecisionTreeRegressor & RandomForest)
+# ============================================================================
+
 class DecisionTreeRegressor(BaseRegressor):
     """
     Decision Tree Regressor
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     max_depth : int, default=None
         Maximum depth of the tree
     min_samples_split : int, default=2
         Minimum samples required to split
     min_samples_leaf : int, default=1
         Minimum samples required at leaf
+
+    Example
+    -------
+    >>> from mayini.ml import DecisionTreeRegressor
+    >>> dt = DecisionTreeRegressor(max_depth=5)
+    >>> dt.fit(X_train, y_train)
     """
 
     def __init__(self, max_depth=None, min_samples_split=2, min_samples_leaf=1):
@@ -196,7 +238,7 @@ class DecisionTreeRegressor(BaseRegressor):
 
     def _best_split(self, X, y):
         """Find best split"""
-        best_mse = float('inf')
+        best_mse = float("inf")
         best_feature = None
         best_threshold = None
 
@@ -208,12 +250,19 @@ class DecisionTreeRegressor(BaseRegressor):
             thresholds = np.unique(X[:, feature])
 
             for threshold in thresholds:
-                X_left, X_right, y_left, y_right = self._split(X, y, feature, threshold)
+                X_left, X_right, y_left, y_right = self._split(
+                    X, y, feature, threshold
+                )
 
-                if len(y_left) < self.min_samples_leaf or len(y_right) < self.min_samples_leaf:
+                if (
+                    len(y_left) < self.min_samples_leaf
+                    or len(y_right) < self.min_samples_leaf
+                ):
                     continue
 
-                mse = len(y_left) * self._mse(y_left) + len(y_right) * self._mse(y_right)
+                mse = len(y_left) * self._mse(y_left) + len(y_right) * self._mse(
+                    y_right
+                )
 
                 if mse < best_mse:
                     best_mse = mse
@@ -226,7 +275,9 @@ class DecisionTreeRegressor(BaseRegressor):
         """Build regression tree"""
         n_samples = X.shape[0]
 
-        if (self.max_depth is not None and depth >= self.max_depth) or            n_samples < self.min_samples_split:
+        if (
+            self.max_depth is not None and depth >= self.max_depth
+        ) or n_samples < self.min_samples_split:
             return Node(value=np.mean(y))
 
         best_feature, best_threshold = self._best_split(X, y)
@@ -238,8 +289,12 @@ class DecisionTreeRegressor(BaseRegressor):
         left_subtree = self._build_tree(X_left, y_left, depth + 1)
         right_subtree = self._build_tree(X_right, y_right, depth + 1)
 
-        return Node(feature=best_feature, threshold=best_threshold,
-                   left=left_subtree, right=right_subtree)
+        return Node(
+            feature=best_feature,
+            threshold=best_threshold,
+            left=left_subtree,
+            right=right_subtree,
+        )
 
     def fit(self, X, y):
         """Fit regression tree"""
@@ -268,8 +323,8 @@ class RandomForestClassifier(BaseClassifier):
     """
     Random Forest Classifier
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     n_estimators : int, default=100
         Number of trees
     max_depth : int, default=None
@@ -278,9 +333,21 @@ class RandomForestClassifier(BaseClassifier):
         Minimum samples to split
     max_features : str or int, default='sqrt'
         Number of features to consider for splits
+
+    Example
+    -------
+    >>> from mayini.ml import RandomForestClassifier
+    >>> rf = RandomForestClassifier(n_estimators=100)
+    >>> rf.fit(X_train, y_train)
     """
 
-    def __init__(self, n_estimators=100, max_depth=None, min_samples_split=2, max_features='sqrt'):
+    def __init__(
+        self,
+        n_estimators=100,
+        max_depth=None,
+        min_samples_split=2,
+        max_features="sqrt",
+    ):
         super().__init__()
         self.n_estimators = n_estimators
         self.max_depth = max_depth
@@ -303,8 +370,7 @@ class RandomForestClassifier(BaseClassifier):
 
         for _ in range(self.n_estimators):
             tree = DecisionTreeClassifier(
-                max_depth=self.max_depth,
-                min_samples_split=self.min_samples_split
+                max_depth=self.max_depth, min_samples_split=self.min_samples_split
             )
             X_sample, y_sample = self._bootstrap_sample(X, y)
             tree.fit(X_sample, y_sample)
@@ -324,7 +390,8 @@ class RandomForestClassifier(BaseClassifier):
         # Majority vote
         final_predictions = []
         for i in range(X.shape[0]):
-            values, counts = np.unique(predictions[:, i], return_counts=True)
-            final_predictions.append(values[counts.argmax()])
+            votes = predictions[:, i]
+            unique, counts = np.unique(votes, return_counts=True)
+            final_predictions.append(unique[counts.argmax()])
 
         return np.array(final_predictions)

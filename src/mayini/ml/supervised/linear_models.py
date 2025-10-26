@@ -7,12 +7,19 @@ class LinearRegression(BaseRegressor):
     """
     Ordinary Least Squares Linear Regression
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     fit_intercept : bool, default=True
         Whether to calculate the intercept
     normalize : bool, default=False
         Whether to normalize features before regression
+
+    Example
+    -------
+    >>> from mayini.ml import LinearRegression
+    >>> lr = LinearRegression()
+    >>> lr.fit(X_train, y_train)
+    >>> predictions = lr.predict(X_test)
     """
 
     def __init__(self, fit_intercept=True, normalize=False):
@@ -61,12 +68,18 @@ class Ridge(BaseRegressor):
     """
     Ridge Regression (L2 regularization)
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     alpha : float, default=1.0
         Regularization strength
     fit_intercept : bool, default=True
         Whether to calculate the intercept
+
+    Example
+    -------
+    >>> from mayini.ml import Ridge
+    >>> ridge = Ridge(alpha=1.0)
+    >>> ridge.fit(X_train, y_train)
     """
 
     def __init__(self, alpha=1.0, fit_intercept=True):
@@ -92,7 +105,7 @@ class Ridge(BaseRegressor):
         n_features = X.shape[1]
         A = X.T @ X + self.alpha * np.eye(n_features)
         b = X.T @ y
-        self.coef_ = linalg.solve(A, b, assume_a='pos')
+        self.coef_ = linalg.solve(A, b, assume_a="pos")
 
         if self.fit_intercept:
             self.intercept_ = self.y_mean_ - self.X_mean_ @ self.coef_
@@ -114,14 +127,20 @@ class Lasso(BaseRegressor):
     Lasso Regression (L1 regularization)
     Uses coordinate descent algorithm
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     alpha : float, default=1.0
         Regularization strength
     max_iter : int, default=1000
         Maximum number of iterations
     tol : float, default=1e-4
         Tolerance for optimization
+
+    Example
+    -------
+    >>> from mayini.ml import Lasso
+    >>> lasso = Lasso(alpha=0.1)
+    >>> lasso.fit(X_train, y_train)
     """
 
     def __init__(self, alpha=1.0, max_iter=1000, tol=1e-4):
@@ -161,7 +180,9 @@ class Lasso(BaseRegressor):
 
                 # Update j-th coefficient
                 rho_j = X[:, j] @ residual
-                self.coef_[j] = self._soft_threshold(rho_j / n_samples, self.alpha) / (np.sum(X[:, j]**2) / n_samples)
+                self.coef_[j] = self._soft_threshold(
+                    rho_j / n_samples, self.alpha
+                ) / (np.sum(X[:, j] ** 2) / n_samples)
 
             # Check convergence
             if np.max(np.abs(self.coef_ - coef_old)) < self.tol:
@@ -183,8 +204,8 @@ class LogisticRegression(BaseClassifier):
     """
     Logistic Regression for binary and multi-class classification
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     learning_rate : float, default=0.01
         Learning rate for gradient descent
     max_iter : int, default=1000
@@ -195,9 +216,18 @@ class LogisticRegression(BaseClassifier):
         Regularization penalty ('l1', 'l2', or None)
     C : float, default=1.0
         Inverse of regularization strength
+
+    Example
+    -------
+    >>> from mayini.ml import LogisticRegression
+    >>> lr = LogisticRegression()
+    >>> lr.fit(X_train, y_train)
+    >>> predictions = lr.predict(X_test)
     """
 
-    def __init__(self, learning_rate=0.01, max_iter=1000, tol=1e-4, penalty='l2', C=1.0):
+    def __init__(
+        self, learning_rate=0.01, max_iter=1000, tol=1e-4, penalty="l2", C=1.0
+    ):
         super().__init__()
         self.learning_rate = learning_rate
         self.max_iter = max_iter
@@ -242,9 +272,9 @@ class LogisticRegression(BaseClassifier):
                 grad_b = np.mean(error)
 
                 # Add regularization
-                if self.penalty == 'l2':
+                if self.penalty == "l2":
                     grad_w += (1 / self.C) * self.coef_
-                elif self.penalty == 'l1':
+                elif self.penalty == "l1":
                     grad_w += (1 / self.C) * np.sign(self.coef_)
 
                 # Update parameters
@@ -271,7 +301,7 @@ class LogisticRegression(BaseClassifier):
                     grad_w = (X.T @ error) / n_samples
                     grad_b = np.mean(error)
 
-                    if self.penalty == 'l2':
+                    if self.penalty == "l2":
                         grad_w += (1 / self.C) * self.coef_[idx]
 
                     self.coef_[idx] -= self.learning_rate * grad_w

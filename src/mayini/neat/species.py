@@ -1,42 +1,84 @@
-"""Species management for NEAT"""
 import numpy as np
 
+
 class Species:
-    def __init__(self, representative):
+    """
+    Species for grouping similar genomes
+
+    Parameters
+    ----------
+    representative : Genome
+        Representative genome for the species
+    species_id : int
+        Unique species identifier
+
+    Attributes
+    ----------
+    members : list
+        List of genomes in this species
+    fitness_history : list
+        Historical fitness values
+    age : int
+        Age of the species in generations
+
+    Example
+    -------
+    >>> from mayini.neat import Species
+    >>> species = Species(genome, species_id=0)
+    """
+
+    def __init__(self, representative, species_id):
         self.representative = representative
+        self.species_id = species_id
         self.members = []
         self.fitness_history = []
-        self.average_fitness = 0.0
-        self.staleness = 0
+        self.age = 0
+        self.max_fitness = 0
 
     def add_member(self, genome):
+        """Add a genome to this species"""
         self.members.append(genome)
 
-    def calculate_average_fitness(self):
+    def calculate_adjusted_fitness(self):
+        """
+        Calculate adjusted fitness for all members
+
+        Adjusted fitness accounts for species size to encourage diversity
+        """
         if not self.members:
-            self.average_fitness = 0.0
             return
 
-        total_fitness = sum(m.fitness for m in self.members)
-        self.average_fitness = total_fitness / len(self.members)
+        # Explicit fitness sharing
+        for genome in self.members:
+            genome.adjusted_fitness = genome.fitness / len(self.members)
 
-        # Track staleness
-        if self.fitness_history and self.average_fitness <= max(self.fitness_history):
-            self.staleness += 1
-        else:
-            self.staleness = 0
-
-        self.fitness_history.append(self.average_fitness)
-
-    def sort_members(self):
-        self.members.sort(key=lambda x: x.fitness, reverse=True)
-
-    def remove_weak(self, survival_rate=0.2):
-        self.sort_members()
-        cutoff = max(1, int(len(self.members) * survival_rate))
-        self.members = self.members[:cutoff]
-
-    def choose_representative(self):
+    def update_representative(self):
+        """Update species representative"""
         if self.members:
-            self.representative = np.random.choice(self.members).copy()
+            # Choose member with highest fitness as representative
+            self.representative = max(self.members, key=lambda g: g.fitness)
 
+    def get_average_fitness(self):
+        """Get average fitness of species"""
+        if not self.members:
+            return 0
+        return np.mean([g.fitness for g in self.members])
+
+    def cull(self, survival_threshold=0.2):
+        """
+        Remove lower-performing members
+
+        Parameters
+        ----------
+        survival_threshold : float, default=0.2
+            Fraction of members to keep
+        """
+        if len(self.members) <= 2:
+            return
+
+        # Sort by fitness
+        self.members.sort(key=lambda g: g.fitness, reverse=True)
+
+        # Keep top performers
+        cutoff = max(2, int(len(self.members) * survival_threshold))
+        self.members = self.members[:cutoff]

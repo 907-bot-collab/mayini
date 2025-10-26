@@ -1,7 +1,7 @@
 from .variance import VarianceThreshold
-from .correlation import CorrelationThreshold
+from .correlation import CorrelationSelector
 
 __all__ = [
-    'VarianceThreshold',
-    'CorrelationThreshold',
+    "VarianceThreshold",
+    "CorrelationSelector",
 ]

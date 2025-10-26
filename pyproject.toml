@@ -48,7 +48,6 @@ classifiers = [
     "Topic :: Education",
     "Typing :: Typed"
 ]
-
 dependencies = [
     "numpy>=1.21.0",
     "scipy>=1.7.0",
@@ -131,7 +130,6 @@ markers = [
     "gpu: marks tests that require GPU",
     "numerical: marks tests with numerical computations"
 ]
-
 filterwarnings = [
     "error",
     "ignore::UserWarning",
@@ -203,10 +201,15 @@ extend-exclude = '''
 )/
 '''
 
-# Linting with Ruff
+# ============================================================================
+# FIXED: Linting with Ruff (Updated to new format)
+# ============================================================================
 [tool.ruff]
 target-version = "py38"
 line-length = 88
+
+# MOVED: All lint settings now under [tool.ruff.lint]
+[tool.ruff.lint]
 select = [
     "E",    # pycodestyle errors
     "W",    # pycodestyle warnings
@@ -221,26 +224,26 @@ select = [
     "RUF",  # ruff-specific rules
 ]
 ignore = [
-    "E501",   # line too long, handled by black
-    "B008",   # do not perform function calls in argument defaults
-    "C901",   # too complex
-    "PLR0913", # too many arguments
-    "PLR0912", # too many branches
-    "PLR0915", # too many statements
+    "E501",     # line too long, handled by black
+    "B008",     # do not perform function calls in argument defaults
+    "C901",     # too complex
+    "PLR0913",  # too many arguments
+    "PLR0912",  # too many branches
+    "PLR0915",  # too many statements
 ]
 fixable = ["ALL"]
 unfixable = []
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "F403"]
 "tests/*" = ["PLR2004", "S101", "ARG"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["mayini"]
 force-single-line = false
 lines-after-imports = 2
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 10
 
 # Type checking with mypy

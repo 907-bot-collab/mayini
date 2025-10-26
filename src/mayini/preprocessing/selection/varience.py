@@ -4,19 +4,20 @@ from ..base import BaseTransformer
 
 class VarianceThreshold(BaseTransformer):
     """
-    Remove low-variance features
+    Remove features with low variance
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     threshold : float, default=0.0
-        Features with variance below threshold are removed
+        Features with variance below this threshold will be removed
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.preprocessing import VarianceThreshold
     >>> selector = VarianceThreshold(threshold=0.1)
-    >>> X = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0], [0, 1, 1]])
-    >>> selector.fit_transform(X)
+    >>> X = [[0, 2, 0], [0, 3, 0], [0, 4, 0]]
+    >>> X_selected = selector.fit_transform(X)
+    >>> # Removes first and third columns (zero variance)
     """
 
     def __init__(self, threshold=0.0):
@@ -27,9 +28,7 @@ class VarianceThreshold(BaseTransformer):
 
     def fit(self, X, y=None):
         """Compute variances"""
-        X = np.asarray(X, dtype=np.float64)
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
+        X, _ = self._validate_input(X)
 
         self.variances_ = np.var(X, axis=0)
         self.selected_features_ = self.variances_ > self.threshold
@@ -40,14 +39,24 @@ class VarianceThreshold(BaseTransformer):
     def transform(self, X):
         """Remove low-variance features"""
         self._check_is_fitted()
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
-
+        X, _ = self._validate_input(X)
         return X[:, self.selected_features_]
 
-    def get_support(self):
-        """Get mask of selected features"""
+    def get_support(self, indices=False):
+        """
+        Get mask or indices of selected features
+
+        Parameters
+        ----------
+        indices : bool, default=False
+            If True, return indices; if False, return boolean mask
+
+        Returns
+        -------
+        array-like
+            Mask or indices of selected features
+        """
         self._check_is_fitted()
+        if indices:
+            return np.where(self.selected_features_)[0]
         return self.selected_features_

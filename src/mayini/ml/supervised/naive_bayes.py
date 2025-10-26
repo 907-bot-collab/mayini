@@ -1,4 +1,3 @@
-
 import numpy as np
 from ..base import BaseClassifier
 
@@ -9,8 +8,8 @@ class GaussianNB(BaseClassifier):
 
     Assumes features follow normal distribution
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.ml import GaussianNB
     >>> X = np.array([[1, 2], [2, 3], [3, 4], [4, 5]])
     >>> y = np.array([0, 0, 1, 1])
@@ -59,9 +58,10 @@ class GaussianNB(BaseClassifier):
         posteriors = []
         for i, c in enumerate(self.classes_):
             prior = np.log(self.class_prior_[i])
-            likelihood = np.sum(np.log(self._gaussian_pdf(
-                X, self.theta_[i, :], self.sigma_[i, :]
-            )), axis=1)
+            likelihood = np.sum(
+                np.log(self._gaussian_pdf(X, self.theta_[i, :], self.sigma_[i, :])),
+                axis=1,
+            )
             posteriors.append(prior + likelihood)
 
         posteriors = np.array(posteriors).T
@@ -82,13 +82,13 @@ class MultinomialNB(BaseClassifier):
 
     Suitable for discrete features (e.g., word counts)
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     alpha : float, default=1.0
         Additive (Laplace/Lidstone) smoothing parameter
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.ml import MultinomialNB
     >>> X = np.array([[1, 0, 1], [0, 1, 1], [1, 1, 0]])
     >>> y = np.array([0, 1, 0])
@@ -156,15 +156,15 @@ class BernoulliNB(BaseClassifier):
 
     Suitable for binary/boolean features
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     alpha : float, default=1.0
         Additive smoothing parameter
     binarize : float, default=0.0
         Threshold for binarizing features
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.ml import BernoulliNB
     >>> X = np.array([[0, 1, 0], [1, 1, 1], [0, 0, 1]])
     >>> y = np.array([0, 1, 0])
@@ -220,7 +220,9 @@ class BernoulliNB(BaseClassifier):
         for i in range(len(self.classes_)):
             # P(x|y) = Product of P(x_i|y) for x_i=1 and P(1-x_i|y) for x_i=0
             log_prob = np.sum(X * self.feature_log_prob_[i, :], axis=1)
-            log_prob += np.sum((1 - X) * np.log(1 - np.exp(self.feature_log_prob_[i, :])), axis=1)
+            log_prob += np.sum(
+                (1 - X) * np.log(1 - np.exp(self.feature_log_prob_[i, :])), axis=1
+            )
             log_prob += self.class_log_prior_[i]
             log_proba.append(log_prob)
 

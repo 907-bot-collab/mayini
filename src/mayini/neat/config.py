@@ -1,75 +1,83 @@
 class Config:
     """
-    NEAT algorithm configuration
-    
-    Parameters for evolution, mutation, and speciation
-    """
-    
-    def __init__(self):
-        # Population parameters
-        self.population_size = 150
-        
-        # Genome parameters
-        self.n_inputs = 2
-        self.n_outputs = 1
-        
-        # Mutation rates
-        self.weight_mutation_rate = 0.8
-        self.weight_mutation_power = 0.5
-        self.weight_replace_rate = 0.1
-        
-        self.add_connection_rate = 0.05
-        self.add_node_rate = 0.03
-        
-        self.enable_connection_rate = 0.01
-        self.disable_connection_rate = 0.01
-        
-        # Speciation parameters
-        self.compatibility_threshold = 3.0
-        self.compatibility_disjoint_coefficient = 1.0
-        self.compatibility_weight_coefficient = 0.4
-        
-        # Species parameters
-        self.species_elitism = 2
-        self.survival_threshold = 0.2
-        self.stagnation_threshold = 15
-        
-        # Reproduction parameters
-        self.crossover_rate = 0.75
-        self.interspecies_crossover_rate = 0.001
-        
-        # Activation functions
-        self.activation_default = 'sigmoid'
-        self.activation_options = ['sigmoid', 'tanh', 'relu', 'identity']
-        
-        # Fitness
-        self.fitness_criterion = 'max'  # 'max' or 'min'
-        self.fitness_threshold = None
-        
-        # Network parameters
-        self.bias_mutation_rate = 0.7
-        self.bias_mutation_power = 0.5
-        self.bias_replace_rate = 0.1
-        
-        # Recurrent connections
-        self.allow_recurrent = False
-        
-    def validate(self):
-        """Validate configuration parameters"""
-        assert self.population_size > 0, "Population size must be positive"
-        assert self.n_inputs > 0, "Number of inputs must be positive"
-        assert self.n_outputs > 0, "Number of outputs must be positive"
-        assert 0 <= self.weight_mutation_rate <= 1, "Mutation rate must be between 0 and 1"
-        assert self.compatibility_threshold > 0, "Compatibility threshold must be positive"
-        return True
-    
-    @classmethod
-    def from_dict(cls, config_dict):
-        """Create config from dictionary"""
-        config = cls()
-        for key, value in config_dict.items():
-            if hasattr(config, key):
-                setattr(config, key, value)
-        config.validate()
-        return config
+    NEAT Configuration
 
+    Parameters
+    ----------
+    population_size : int, default=150
+        Number of genomes in population
+    fitness_threshold : float, default=None
+        Fitness threshold for termination
+    max_generations : int, default=None
+        Maximum generations
+    activation_function : str, default='sigmoid'
+        Default activation function
+    mutation_rate : float, default=0.8
+        Probability of mutation
+    crossover_rate : float, default=0.75
+        Probability of crossover
+    add_node_rate : float, default=0.03
+        Probability of adding node
+    add_connection_rate : float, default=0.05
+        Probability of adding connection
+    weight_mutation_rate : float, default=0.8
+        Probability of weight mutation
+    weight_mutation_power : float, default=0.5
+        Standard deviation for weight perturbation
+    compatibility_threshold : float, default=3.0
+        Threshold for species compatibility
+    excess_coefficient : float, default=1.0
+        Weight for excess genes in distance
+    disjoint_coefficient : float, default=1.0
+        Weight for disjoint genes in distance
+    weight_coefficient : float, default=0.4
+        Weight for weight difference in distance
+    survival_threshold : float, default=0.2
+        Fraction of species that survives
+
+    Example
+    -------
+    >>> from mayini.neat import Config
+    >>> config = Config(population_size=150, max_generations=100)
+    """
+
+    def __init__(
+        self,
+        population_size=150,
+        fitness_threshold=None,
+        max_generations=None,
+        activation_function="sigmoid",
+        mutation_rate=0.8,
+        crossover_rate=0.75,
+        add_node_rate=0.03,
+        add_connection_rate=0.05,
+        weight_mutation_rate=0.8,
+        weight_mutation_power=0.5,
+        compatibility_threshold=3.0,
+        excess_coefficient=1.0,
+        disjoint_coefficient=1.0,
+        weight_coefficient=0.4,
+        survival_threshold=0.2,
+    ):
+        self.population_size = population_size
+        self.fitness_threshold = fitness_threshold
+        self.max_generations = max_generations
+        self.activation_function = activation_function
+        self.mutation_rate = mutation_rate
+        self.crossover_rate = crossover_rate
+        self.add_node_rate = add_node_rate
+        self.add_connection_rate = add_connection_rate
+        self.weight_mutation_rate = weight_mutation_rate
+        self.weight_mutation_power = weight_mutation_power
+        self.compatibility_threshold = compatibility_threshold
+        self.excess_coefficient = excess_coefficient
+        self.disjoint_coefficient = disjoint_coefficient
+        self.weight_coefficient = weight_coefficient
+        self.survival_threshold = survival_threshold
+
+    def __repr__(self):
+        """String representation"""
+        return (
+            f"Config(population_size={self.population_size}, "
+            f"max_generations={self.max_generations})"
+        )

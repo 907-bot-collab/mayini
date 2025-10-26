@@ -1,169 +1,195 @@
 import numpy as np
 from collections import Counter
-import re
 from ..base import BaseTransformer
 
 
 class CountVectorizer(BaseTransformer):
     """
-    Convert text documents to token count matrix
+    Convert text documents to matrix of token counts
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     max_features : int, default=None
         Maximum number of features (vocabulary size)
-    lowercase : bool, default=True
-        Convert all text to lowercase
+    min_df : int, default=1
+        Minimum document frequency
+    max_df : float, default=1.0
+        Maximum document frequency (proportion)
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.preprocessing import CountVectorizer
-    >>> vectorizer = CountVectorizer(max_features=10)
-    >>> docs = ["hello world", "hello python world"]
-    >>> vectorizer.fit_transform(docs)
+    >>> cv = CountVectorizer()
+    >>> docs = ["hello world", "hello there"]
+    >>> X = cv.fit_transform(docs)
     """
 
-    def __init__(self, max_features=None, lowercase=True):
+    def __init__(self, max_features=None, min_df=1, max_df=1.0):
         super().__init__()
         self.max_features = max_features
-        self.lowercase = lowercase
+        self.min_df = min_df
+        self.max_df = max_df
         self.vocabulary_ = None
+        self.feature_names_ = None
 
-    def _tokenize(self, text):
-        """Simple tokenization"""
-        if self.lowercase:
-            text = text.lower()
-        tokens = re.findall(r'\w+', text)
-        return tokens
-
-    def fit(self, X, y=None):
+    def fit(self, documents, y=None):
         """Build vocabulary"""
-        word_counts = Counter()
+        # Count document frequency for each term
+        doc_frequencies = Counter()
+        term_counts = []
 
-        for doc in X:
+        for doc in documents:
             tokens = self._tokenize(doc)
-            word_counts.update(tokens)
+            unique_tokens = set(tokens)
+            for token in unique_tokens:
+                doc_frequencies[token] += 1
+            term_counts.append(Counter(tokens))
 
-        if self.max_features is not None:
-            most_common = word_counts.most_common(self.max_features)
-        else:
-            most_common = word_counts.items()
+        n_docs = len(documents)
 
-        self.vocabulary_ = {word: idx for idx, (word, _) in enumerate(most_common)}
+        # Filter by document frequency
+        valid_terms = []
+        for term, df in doc_frequencies.items():
+            if df >= self.min_df and (df / n_docs) <= self.max_df:
+                valid_terms.append((term, df))
+
+        # Sort by document frequency and take top features
+        valid_terms.sort(key=lambda x: x[1], reverse=True)
+
+        if self.max_features:
+            valid_terms = valid_terms[: self.max_features]
+
+        # Build vocabulary
+        self.vocabulary_ = {term: idx for idx, (term, _) in enumerate(valid_terms)}
+        self.feature_names_ = [term for term, _ in valid_terms]
+
         self.is_fitted_ = True
         return self
 
-    def transform(self, X):
+    def transform(self, documents):
         """Transform documents to count matrix"""
         self._check_is_fitted()
 
-        n_docs = len(X)
+        n_docs = len(documents)
         n_features = len(self.vocabulary_)
-        X_counts = np.zeros((n_docs, n_features))
+        X = np.zeros((n_docs, n_features))
 
-        for i, doc in enumerate(X):
+        for doc_idx, doc in enumerate(documents):
             tokens = self._tokenize(doc)
             token_counts = Counter(tokens)
 
-            for word, count in token_counts.items():
-                if word in self.vocabulary_:
-                    X_counts[i, self.vocabulary_[word]] = count
+            for token, count in token_counts.items():
+                if token in self.vocabulary_:
+                    feature_idx = self.vocabulary_[token]
+                    X[doc_idx, feature_idx] = count
 
-        return X_counts
+        return X
+
+    def get_feature_names(self):
+        """Get feature names"""
+        self._check_is_fitted()
+        return self.feature_names_
+
+    @staticmethod
+    def _tokenize(document):
+        """Simple tokenization"""
+        # Convert to lowercase and split on whitespace
+        return document.lower().split()
 
 
 class TfidfVectorizer(BaseTransformer):
     """
-    Convert text documents to TF-IDF features
+    Convert text documents to TF-IDF feature matrix
 
     TF-IDF = Term Frequency * Inverse Document Frequency
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     max_features : int, default=None
         Maximum number of features
-    lowercase : bool, default=True
-        Convert to lowercase
+    min_df : int, default=1
+        Minimum document frequency
+    max_df : float, default=1.0
+        Maximum document frequency
     use_idf : bool, default=True
-        Enable IDF reweighting
+        Enable inverse-document-frequency reweighting
+    smooth_idf : bool, default=True
+        Add one to document frequencies
 
-    Example:
-    --------
+    Example
+    -------
     >>> from mayini.preprocessing import TfidfVectorizer
-    >>> vectorizer = TfidfVectorizer(max_features=10)
-    >>> docs = ["hello world", "hello python", "python world"]
-    >>> vectorizer.fit_transform(docs)
+    >>> tfidf = TfidfVectorizer()
+    >>> docs = ["hello world", "hello there"]
+    >>> X = tfidf.fit_transform(docs)
     """
 
-    def __init__(self, max_features=None, lowercase=True, use_idf=True):
+    def __init__(
+        self,
+        max_features=None,
+        min_df=1,
+        max_df=1.0,
+        use_idf=True,
+        smooth_idf=True,
+    ):
         super().__init__()
         self.max_features = max_features
-        self.lowercase = lowercase
+        self.min_df = min_df
+        self.max_df = max_df
         self.use_idf = use_idf
+        self.smooth_idf = smooth_idf
         self.vocabulary_ = None
         self.idf_ = None
+        self.feature_names_ = None
 
-    def _tokenize(self, text):
-        """Simple tokenization"""
-        if self.lowercase:
-            text = text.lower()
-        tokens = re.findall(r'\w+', text)
-        return tokens
-
-    def fit(self, X, y=None):
+    def fit(self, documents, y=None):
         """Build vocabulary and IDF"""
-        word_doc_counts = Counter()
-        all_words = Counter()
+        # First, use CountVectorizer to build vocabulary
+        self.count_vectorizer_ = CountVectorizer(
+            max_features=self.max_features, min_df=self.min_df, max_df=self.max_df
+        )
+        count_matrix = self.count_vectorizer_.fit_transform(documents)
 
-        for doc in X:
-            tokens = self._tokenize(doc)
-            unique_tokens = set(tokens)
-            word_doc_counts.update(unique_tokens)
-            all_words.update(tokens)
+        self.vocabulary_ = self.count_vectorizer_.vocabulary_
+        self.feature_names_ = self.count_vectorizer_.feature_names_
 
-        if self.max_features is not None:
-            most_common = all_words.most_common(self.max_features)
-        else:
-            most_common = all_words.items()
-
-        self.vocabulary_ = {word: idx for idx, (word, _) in enumerate(most_common)}
-
+        # Compute IDF
         if self.use_idf:
-            n_docs = len(X)
-            self.idf_ = np.zeros(len(self.vocabulary_))
+            n_docs = len(documents)
+            # Document frequency for each term
+            df = np.sum(count_matrix > 0, axis=0)
 
-            for word, idx in self.vocabulary_.items():
-                doc_freq = word_doc_counts.get(word, 0)
-                self.idf_[idx] = np.log((n_docs + 1) / (doc_freq + 1)) + 1
+            if self.smooth_idf:
+                # Add one to document frequencies
+                idf = np.log((n_docs + 1) / (df + 1)) + 1
+            else:
+                idf = np.log(n_docs / df) + 1
+
+            self.idf_ = idf
+        else:
+            self.idf_ = np.ones(len(self.vocabulary_))
 
         self.is_fitted_ = True
         return self
 
-    def transform(self, X):
+    def transform(self, documents):
         """Transform documents to TF-IDF matrix"""
         self._check_is_fitted()
 
-        n_docs = len(X)
-        n_features = len(self.vocabulary_)
-        X_tfidf = np.zeros((n_docs, n_features))
+        # Get term frequency matrix
+        tf_matrix = self.count_vectorizer_.transform(documents)
 
-        for i, doc in enumerate(X):
-            tokens = self._tokenize(doc)
-            token_counts = Counter(tokens)
+        # Apply IDF weighting
+        tfidf_matrix = tf_matrix * self.idf_
 
-            # Compute TF
-            total_tokens = len(tokens)
-            if total_tokens == 0:
-                continue
+        # L2 normalization (normalize each document vector)
+        norms = np.sqrt(np.sum(tfidf_matrix**2, axis=1, keepdims=True))
+        norms[norms == 0] = 1.0
+        tfidf_matrix = tfidf_matrix / norms
 
-            for word, count in token_counts.items():
-                if word in self.vocabulary_:
-                    idx = self.vocabulary_[word]
-                    tf = count / total_tokens
+        return tfidf_matrix
 
-                    if self.use_idf:
-                        X_tfidf[i, idx] = tf * self.idf_[idx]
-                    else:
-                        X_tfidf[i, idx] = tf
-
-        return X_tfidf
+    def get_feature_names(self):
+        """Get feature names"""
+        self._check_is_fitted()
+        return self.feature_names_

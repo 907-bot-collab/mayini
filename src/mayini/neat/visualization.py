@@ -1,119 +1,135 @@
-
 import numpy as np
 
 
-class NEATVisualizer:
+class NetworkVisualizer:
     """
-    Visualize NEAT genomes and networks
+    Visualize NEAT neural networks
+
+    Parameters
+    ----------
+    genome : Genome
+        Genome to visualize
+
+    Example
+    -------
+    >>> from mayini.neat import NetworkVisualizer
+    >>> visualizer = NetworkVisualizer(genome)
+    >>> info = visualizer.get_network_info()
     """
-    
-    @staticmethod
-    def print_genome(genome):
-        """Print genome structure"""
-        print(f"\\nGenome (Fitness: {genome.fitness:.4f})")
-        print(f"Inputs: {genome.n_inputs}, Outputs: {genome.n_outputs}")
-        print(f"Nodes: {len(genome.nodes)}, Connections: {len(genome.connections)}")
-        
-        print("\\nNodes:")
-        for node_id, node in genome.nodes.items():
-            print(f"  {node_id}: {node.type} (bias: {node.bias:.3f})")
-        
-        print("\\nConnections:")
-        for innov, conn in genome.connections.items():
-            status = "enabled" if conn.enabled else "disabled"
-            print(f"  {conn.in_node} -> {conn.out_node}: {conn.weight:.3f} ({status}, innov: {innov})")
-    
-    @staticmethod
-    def print_population_stats(population):
-        """Print population statistics"""
-        print(f"\\n{'='*60}")
-        print(f"Generation {population.generation}")
-        print(f"{'='*60}")
-        
-        fitnesses = [g.fitness for g in population.genomes]
-        print(f"Population size: {len(population.genomes)}")
-        print(f"Species count: {len(population.species)}")
-        print(f"\\nFitness Statistics:")
-        print(f"  Max: {np.max(fitnesses):.4f}")
-        print(f"  Mean: {np.mean(fitnesses):.4f}")
-        print(f"  Min: {np.min(fitnesses):.4f}")
-        print(f"  Std: {np.std(fitnesses):.4f}")
-        
-        if population.best_genome:
-            print(f"\\nBest Genome Ever:")
-            print(f"  Fitness: {population.best_genome.fitness:.4f}")
-            print(f"  Nodes: {len(population.best_genome.nodes)}")
-            print(f"  Connections: {len(population.best_genome.connections)}")
-        
-        print(f"\\nSpecies:")
-        for i, species in enumerate(population.species):
-            print(f"  Species {i}: {len(species.members)} members, "
-                  f"avg fitness: {species.average_fitness:.4f}, "
-                  f"staleness: {species.staleness}")
-    
-    @staticmethod
-    def plot_fitness_history(fitness_history, save_path=None):
+
+    def __init__(self, genome):
+        self.genome = genome
+
+    def get_network_info(self):
         """
-        Plot fitness over generations
-        
-        Requires matplotlib (optional dependency)
+        Get information about network structure
+
+        Returns
+        -------
+        dict
+            Network information including node counts and connections
         """
-        try:
-            import matplotlib.pyplot as plt
-            
-            generations = range(len(fitness_history))
-            max_fitness = [max(gen) for gen in fitness_history]
-            avg_fitness = [np.mean(gen) for gen in fitness_history]
-            
-            plt.figure(figsize=(10, 6))
-            plt.plot(generations, max_fitness, label='Max Fitness', linewidth=2)
-            plt.plot(generations, avg_fitness, label='Avg Fitness', linewidth=2)
-            plt.xlabel('Generation')
-            plt.ylabel('Fitness')
-            plt.title('NEAT Evolution Progress')
-            plt.legend()
-            plt.grid(True, alpha=0.3)
-            
-            if save_path:
-                plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            else:
-                plt.show()
-        except ImportError:
-            print("matplotlib not installed. Install with: pip install matplotlib")
-    
-    @staticmethod
-    def export_network_graphviz(genome, filename='network.dot'):
+        n_inputs = self.genome.n_inputs
+        n_outputs = self.genome.n_outputs
+        n_hidden = len(self.genome.nodes) - n_inputs - n_outputs
+        n_connections = len(
+            [c for c in self.genome.connections.values() if c.enabled]
+        )
+
+        return {
+            "n_inputs": n_inputs,
+            "n_outputs": n_outputs,
+            "n_hidden": n_hidden,
+            "n_connections": n_connections,
+            "total_nodes": len(self.genome.nodes),
+            "total_genes": len(self.genome.connections),
+        }
+
+    def get_layers(self):
         """
-        Export network to GraphViz DOT format
-        
-        Can be visualized with: dot -Tpng network.dot -o network.png
+        Compute network layers for visualization
+
+        Returns
+        -------
+        dict
+            Dictionary mapping node IDs to layer numbers
         """
-        lines = ['digraph G {']
-        lines.append('  rankdir=LR;')
-        lines.append('  node [shape=circle];')
-        
-        # Add nodes
-        for node_id, node in genome.nodes.items():
-            if node.type == 'input':
-                lines.append(f'  {node_id} [label="I{node_id}", style=filled, fillcolor=lightblue];')
-            elif node.type == 'output':
-                lines.append(f'  {node_id} [label="O{node_id}", style=filled, fillcolor=lightgreen];')
-            else:
-                lines.append(f'  {node_id} [label="H{node_id}"];')
-        
-        # Add connections
-        for conn in genome.connections.values():
-            if conn.enabled:
-                color = 'green' if conn.weight > 0 else 'red'
-                width = min(abs(conn.weight), 3.0)
-                lines.append(f'  {conn.in_node} -> {conn.out_node} '
-                           f'[color={color}, penwidth={width:.1f}, '
-                           f'label="{conn.weight:.2f}"];')
-        
-        lines.append('}')
-        
-        with open(filename, 'w') as f:
-            f.write('\\n'.join(lines))
-        
-        print(f"Network exported to {filename}")
-        print("Visualize with: dot -Tpng {filename} -o network.png")
+        layers = {}
+
+        # Input layer
+        for i in range(self.genome.n_inputs):
+            layers[i] = 0
+
+        # Output layer (set to high number initially)
+        for i in range(self.genome.n_outputs):
+            node_id = self.genome.n_inputs + i
+            layers[node_id] = 999
+
+        # Compute layers for hidden nodes
+        changed = True
+        while changed:
+            changed = False
+            for conn in self.genome.connections.values():
+                if not conn.enabled:
+                    continue
+
+                if conn.in_node in layers and conn.out_node in layers:
+                    new_layer = layers[conn.in_node] + 1
+                    if new_layer < layers[conn.out_node]:
+                        layers[conn.out_node] = new_layer
+                        changed = True
+                elif conn.in_node in layers:
+                    layers[conn.out_node] = layers[conn.in_node] + 1
+                    changed = True
+
+        # Normalize output layer
+        max_layer = max(layers.values())
+        for i in range(self.genome.n_outputs):
+            node_id = self.genome.n_inputs + i
+            layers[node_id] = max_layer + 1
+
+        return layers
+
+    def to_dict(self):
+        """
+        Convert network to dictionary format for export
+
+        Returns
+        -------
+        dict
+            Network structure as dictionary
+        """
+        nodes = []
+        for node_id, node in self.genome.nodes.items():
+            nodes.append(
+                {"id": node_id, "type": node.type, "activation": node.activation}
+            )
+
+        connections = []
+        for innov, conn in self.genome.connections.items():
+            connections.append(
+                {
+                    "innovation": innov,
+                    "in_node": conn.in_node,
+                    "out_node": conn.out_node,
+                    "weight": float(conn.weight),
+                    "enabled": conn.enabled,
+                }
+            )
+
+        return {
+            "nodes": nodes,
+            "connections": connections,
+            "n_inputs": self.genome.n_inputs,
+            "n_outputs": self.genome.n_outputs,
+            "fitness": self.genome.fitness,
+        }
+
+    def __repr__(self):
+        """String representation"""
+        info = self.get_network_info()
+        return (
+            f"NetworkVisualizer(inputs={info['n_inputs']}, "
+            f"outputs={info['n_outputs']}, hidden={info['n_hidden']}, "
+            f"connections={info['n_connections']})"
+        )

@@ -11,7 +11,7 @@ __email__ = "abhishekadari85@gmail.com"
 from .tensor import Tensor
 
 # Neural network modules
-from .nn import (
+from .nn import(
     Module,
     Sequential,
     Linear,

@@ -2,7 +2,7 @@
 
 # Supervised learning algorithms
 from .supervised.knn import KNN, KNNClassifier, KNNRegressor
-from .supervised.naive_bayes import NaiveBayes, GaussianNB, MultinomialNB
+from .supervised.naive_bayes import NaiveBayes, MultinomialNB
 from .supervised.svm import SVM, SVC, SVR
 from .supervised.linear_models import (
     LinearRegression,
@@ -32,7 +32,8 @@ from .ensemble.boosting import (
 )
 
 # Base classes
-from .base import BaseEstimator, ClassifierMixin, RegressorMixin
+from .base import BaseClassifier, BaseRegressor
+from .supervised.naive_bayes import GaussianNB
 
 __all__ = [
     # Base classes

@@ -1,119 +1,87 @@
+"""Base classes for machine learning models"""
 import numpy as np
 from abc import ABC, abstractmethod
 
 
 class BaseEstimator(ABC):
-    """Base class for all estimators in mayini.ml"""
-
-    def __init__(self):
-        self.is_fitted_ = False
+    """
+    Base class for all estimators in mayini
+    
+    All estimators should inherit from this class and implement
+    fit and predict methods.
+    """
 
     @abstractmethod
     def fit(self, X, y=None):
         """
         Fit the model to training data
-
+        
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like
             Training data
-        y : array-like, shape (n_samples,), optional
+        y : array-like, optional
             Target values
-
+            
         Returns
         -------
-        self : object
+        self
         """
         pass
 
     @abstractmethod
     def predict(self, X):
         """
-        Make predictions on new data
-
+        Make predictions
+        
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
-            Data to predict
-
+        X : array-like
+            Input data
+            
         Returns
         -------
-        y_pred : array-like, shape (n_samples,)
+        array-like
             Predictions
         """
         pass
 
-    def _check_is_fitted(self):
-        """Check if the model has been fitted"""
-        if not self.is_fitted_:
-            raise RuntimeError(
-                f"{self.__class__.__name__} must be fitted before making "
-                "predictions. Call fit() first."
-            )
-
-    def _validate_input(self, X, y=None):
-        """
-        Validate input data
-
-        Parameters
-        ----------
-        X : array-like
-            Input features
-        y : array-like, optional
-            Target values
-
-        Returns
-        -------
-        X : np.ndarray
-            Validated features
-        y : np.ndarray or None
-            Validated targets
-        """
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
-
-        if y is not None:
-            y = np.asarray(y)
-            if X.shape[0] != y.shape[0]:
-                raise ValueError(
-                    f"X and y must have same number of samples. "
-                    f"Got X: {X.shape[0]}, y: {y.shape[0]}"
-                )
-
-        return X, y
-
     def get_params(self):
-        """Get parameters for this estimator"""
+        """Get parameters of this estimator"""
         return {
-            key: val for key, val in self.__dict__.items() if not key.endswith("_")
+            key: value
+            for key, value in self.__dict__.items()
+            if not key.startswith("_")
         }
 
     def set_params(self, **params):
-        """Set parameters for this estimator"""
+        """Set parameters of this estimator"""
         for key, value in params.items():
             setattr(self, key, value)
         return self
 
 
-class BaseClassifier(BaseEstimator):
-    """Base class for all classifiers"""
+class ClassifierMixin:
+    """
+    Mixin class for all classifiers in mayini
+    
+    Provides common methods for classification tasks.
+    """
 
     def score(self, X, y):
         """
-        Return accuracy score
-
+        Calculate accuracy score
+        
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like
             Test data
-        y : array-like, shape (n_samples,)
+        y : array-like
             True labels
-
+            
         Returns
         -------
-        score : float
+        float
             Accuracy score
         """
         predictions = self.predict(X)
@@ -121,130 +89,91 @@ class BaseClassifier(BaseEstimator):
 
     def predict_proba(self, X):
         """
-        Predict class probabilities (optional, override in subclasses)
-
+        Predict class probabilities (if applicable)
+        
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
-            Data to predict
-
+        X : array-like
+            Input data
+            
         Returns
         -------
-        proba : array-like, shape (n_samples, n_classes)
+        array-like
             Class probabilities
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not implement predict_proba"
-        )
+        raise NotImplementedError("predict_proba not implemented for this classifier")
 
 
-class BaseRegressor(BaseEstimator):
-    """Base class for all regressors"""
+class RegressorMixin:
+    """
+    Mixin class for all regressors in mayini
+    
+    Provides common methods for regression tasks.
+    """
 
     def score(self, X, y):
         """
-        Return R² score
-
+        Calculate R² score
+        
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
+        X : array-like
             Test data
-        y : array-like, shape (n_samples,)
+        y : array-like
             True values
-
+            
         Returns
         -------
-        score : float
+        float
             R² score
         """
         predictions = self.predict(X)
-
-        # R² = 1 - (SS_res / SS_tot)
         ss_res = np.sum((y - predictions) ** 2)
         ss_tot = np.sum((y - np.mean(y)) ** 2)
+        return 1 - (ss_res / ss_tot)
 
-        return 1 - (ss_res / (ss_tot + 1e-10))
 
+class ClusterMixin:
+    """
+    Mixin class for all clustering algorithms in mayini
+    """
 
-class BaseCluster(BaseEstimator):
-    """Base class for clustering algorithms"""
-
-    @abstractmethod
     def fit_predict(self, X):
         """
-        Fit the model and return cluster labels
-
+        Fit and predict in one step
+        
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
-            Training data
-
+        X : array-like
+            Input data
+            
         Returns
         -------
-        labels : array-like, shape (n_samples,)
+        array-like
             Cluster labels
         """
-        pass
-
-    def predict(self, X):
-        """
-        Predict cluster labels for new data
-
-        Parameters
-        ----------
-        X : array-like, shape (n_samples, n_features)
-            Data to predict
-
-        Returns
-        -------
-        labels : array-like, shape (n_samples,)
-            Cluster labels
-        """
-        self._check_is_fitted()
-        # Default implementation - override in subclasses if needed
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not implement predict"
-        )
+        return self.fit(X).predict(X)
 
 
-class BaseDecomposition(BaseEstimator):
-    """Base class for dimensionality reduction"""
-
-    @abstractmethod
-    def transform(self, X):
-        """
-        Transform data to reduced dimensions
-
-        Parameters
-        ----------
-        X : array-like, shape (n_samples, n_features)
-            Data to transform
-
-        Returns
-        -------
-        X_transformed : array-like, shape (n_samples, n_components)
-            Transformed data
-        """
-        pass
+class TransformerMixin:
+    """
+    Mixin class for all transformers in mayini
+    """
 
     def fit_transform(self, X, y=None):
         """
         Fit and transform in one step
-
+        
         Parameters
         ----------
-        X : array-like, shape (n_samples, n_features)
-            Training data
+        X : array-like
+            Input data
         y : array-like, optional
-            Ignored
-
+            Target values
+            
         Returns
         -------
-        X_transformed : array-like, shape (n_samples, n_components)
+        array-like
             Transformed data
         """
         return self.fit(X, y).transform(X)
-
-    def predict(self, X):
-        """Alias for transform (for compatibility)"""
-        return self.transform(X)

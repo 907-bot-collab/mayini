@@ -1,59 +1,82 @@
+"""Machine Learning module for mayini"""
+
+# Supervised learning algorithms
+from .supervised.knn import KNN, KNNClassifier, KNNRegressor
+from .supervised.naive_bayes import NaiveBayes, GaussianNB, MultinomialNB
+from .supervised.svm import SVM, SVC, SVR
 from .supervised.linear_models import (
     LinearRegression,
     Ridge,
     Lasso,
     LogisticRegression,
+    ElasticNet,
 )
-
 from .supervised.tree_models import (
+    DecisionTree,
     DecisionTreeClassifier,
     DecisionTreeRegressor,
-    RandomForestClassifier,
 )
 
-from .supervised.knn import KNeighborsClassifier, KNeighborsRegressor
-
-from .supervised.svm import SVC, SVR
-
-from .supervised.naive_bayes import GaussianNB, MultinomialNB
-
-from .unsupervised.clustering import KMeans, DBSCAN, AgglomerativeClustering
-
+# Unsupervised learning algorithms
+from .unsupervised.clustering import KMeans, DBSCAN, HierarchicalClustering
 from .unsupervised.decomposition import PCA, LDA
 
+# Ensemble methods
 from .ensemble.bagging import BaggingClassifier, BaggingRegressor
+from .ensemble.voting import VotingClassifier, VotingRegressor
+from .ensemble.boosting import (
+    AdaBoost,
+    AdaBoostClassifier,
+    GradientBoosting,
+    RandomForest,
+)
 
-from .ensemble.boosting import AdaBoostClassifier, GradientBoostingClassifier
+# Base classes
+from .base import BaseEstimator, ClassifierMixin, RegressorMixin
 
 __all__ = [
-    # Linear Models
+    # Base classes
+    "BaseEstimator",
+    "ClassifierMixin",
+    "RegressorMixin",
+    # Supervised - KNN
+    "KNN",
+    "KNNClassifier",
+    "KNNRegressor",
+    # Supervised - Naive Bayes
+    "NaiveBayes",
+    "GaussianNB",
+    "MultinomialNB",
+    # Supervised - SVM
+    "SVM",
+    "SVC",
+    "SVR",
+    # Supervised - Linear Models
     "LinearRegression",
     "Ridge",
     "Lasso",
     "LogisticRegression",
-    # Trees
+    "ElasticNet",
+    # Supervised - Trees
+    "DecisionTree",
     "DecisionTreeClassifier",
     "DecisionTreeRegressor",
-    "RandomForestClassifier",
-    # KNN
-    "KNeighborsClassifier",
-    "KNeighborsRegressor",
-    # SVM
-    "SVC",
-    "SVR",
-    # Naive Bayes
-    "GaussianNB",
-    "MultinomialNB",
-    # Clustering
+    # Unsupervised - Clustering
     "KMeans",
     "DBSCAN",
-    "AgglomerativeClustering",
-    # Decomposition
+    "HierarchicalClustering",
+    # Unsupervised - Decomposition
     "PCA",
     "LDA",
-    # Ensemble
+    # Ensemble - Bagging
     "BaggingClassifier",
     "BaggingRegressor",
+    # Ensemble - Voting
+    "VotingClassifier",
+    "VotingRegressor",
+    # Ensemble - Boosting
+    "AdaBoost",
     "AdaBoostClassifier",
-    "GradientBoostingClassifier",
+    "GradientBoosting",
+    "RandomForest",
 ]

@@ -1,191 +1,127 @@
-"""Naive Bayes algorithms"""
+"""
+Naive Bayes classifiers implementation.
+"""
+
 import numpy as np
-from ..base import BaseEstimator, ClassifierMixin
+from ..base import BaseClassifier
 
-
-class NaiveBayes(BaseEstimator, ClassifierMixin):
+class GaussianNB(BaseClassifier):
     """
-    Base Naive Bayes classifier
+    Gaussian Naive Bayes classifier.
     
-    Base class for Naive Bayes algorithms.
+    Implements the Gaussian Naive Bayes algorithm for classification.
+    Assumes that features follow a normal (Gaussian) distribution.
     """
-
-    def __init__(self):
-        self.classes_ = None
-        self.class_prior_ = None
-
-    def fit(self, X, y):
-        """Fit Naive Bayes classifier"""
-        X = np.array(X)
-        y = np.array(y)
-        
-        self.classes_ = np.unique(y)
-        n_classes = len(self.classes_)
-        
-        # Calculate class priors
-        self.class_prior_ = np.zeros(n_classes)
-        for idx, c in enumerate(self.classes_):
-            self.class_prior_[idx] = np.mean(y == c)
-        
-        return self
-
-    def predict(self, X):
-        """Predict class labels"""
-        raise NotImplementedError("Subclasses must implement predict method")
-
-
-class GaussianNB(NaiveBayes):
-    """
-    Gaussian Naive Bayes classifier
     
-    Assumes features follow a Gaussian distribution.
-    
-    Example
-    -------
-    >>> from mayini.ml import GaussianNB
-    >>> nb = GaussianNB()
-    >>> nb.fit(X_train, y_train)
-    >>> predictions = nb.predict(X_test)
-    """
-
-    def __init__(self):
+    def __init__(self, var_smoothing=1e-9):
+        """
+        Initialize Gaussian Naive Bayes classifier.
+        
+        Parameters:
+        -----------
+        var_smoothing : float, default=1e-9
+            Portion of the largest variance added to variances for stability
+        """
         super().__init__()
-        self.theta_ = None
-        self.var_ = None
-
+        self.var_smoothing = var_smoothing
+        self.class_prior_ = None
+        self.theta_ = None  # Mean of each feature per class
+        self.var_ = None    # Variance of each feature per class
+    
     def fit(self, X, y):
-        """Fit Gaussian Naive Bayes"""
-        super().fit(X, y)
-        X = np.array(X)
-        y = np.array(y)
+        """
+        Fit Gaussian Naive Bayes classifier.
         
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Training vectors
+        y : array-like of shape (n_samples,)
+            Target values
+            
+        Returns:
+        --------
+        self : object
+        """
+        X = np.asarray(X)
+        y = np.asarray(y)
+        
+        # Get unique classes
+        self.classes_ = np.unique(y)
+        self.n_classes_ = len(self.classes_)
+        
+        # Initialize parameters
         n_features = X.shape[1]
-        n_classes = len(self.classes_)
+        self.theta_ = np.zeros((self.n_classes_, n_features))
+        self.var_ = np.zeros((self.n_classes_, n_features))
+        self.class_prior_ = np.zeros(self.n_classes_)
         
-        # Calculate mean and variance for each class and feature
-        self.theta_ = np.zeros((n_classes, n_features))
-        self.var_ = np.zeros((n_classes, n_features))
-        
+        # Calculate parameters for each class
         for idx, c in enumerate(self.classes_):
             X_c = X[y == c]
             self.theta_[idx, :] = X_c.mean(axis=0)
-            self.var_[idx, :] = X_c.var(axis=0) + 1e-9  # Add small value to avoid division by zero
+            self.var_[idx, :] = X_c.var(axis=0) + self.var_smoothing
+            self.class_prior_[idx] = X_c.shape[0] / X.shape[0]
         
+        self.is_fitted = True
         return self
-
-    def _calculate_likelihood(self, X):
-        """Calculate likelihood for each class"""
-        likelihoods = []
-        
-        for idx, c in enumerate(self.classes_):
-            # Calculate Gaussian probability density
-            mean = self.theta_[idx]
-            var = self.var_[idx]
-            
-            # Log probability to avoid numerical underflow
-            log_prob = -0.5 * np.sum(np.log(2.0 * np.pi * var))
-            log_prob -= 0.5 * np.sum(((X - mean) ** 2) / var, axis=1)
-            
-            likelihoods.append(log_prob)
-        
-        return np.array(likelihoods).T
-
+    
     def predict(self, X):
-        """Predict class labels"""
-        X = np.array(X)
+        """
+        Predict class labels for samples in X.
         
-        # Calculate log posterior
-        log_likelihood = self._calculate_likelihood(X)
-        log_prior = np.log(self.class_prior_)
-        log_posterior = log_likelihood + log_prior
-        
-        # Return class with highest posterior
-        return self.classes_[np.argmax(log_posterior, axis=1)]
-
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Test vectors
+            
+        Returns:
+        --------
+        y_pred : array-like of shape (n_samples,)
+            Predicted class labels
+        """
+        self._check_is_fitted()
+        proba = self.predict_proba(X)
+        return self.classes_[np.argmax(proba, axis=1)]
+    
     def predict_proba(self, X):
-        """Predict class probabilities"""
-        X = np.array(X)
+        """
+        Predict class probabilities for X.
         
-        # Calculate log posterior
-        log_likelihood = self._calculate_likelihood(X)
-        log_prior = np.log(self.class_prior_)
-        log_posterior = log_likelihood + log_prior
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Test vectors
+            
+        Returns:
+        --------
+        proba : array-like of shape (n_samples, n_classes)
+            Class probabilities
+        """
+        self._check_is_fitted()
+        X = np.asarray(X)
         
-        # Convert to probabilities using softmax
-        # Subtract max for numerical stability
-        log_posterior = log_posterior - np.max(log_posterior, axis=1, keepdims=True)
-        posterior = np.exp(log_posterior)
-        posterior = posterior / np.sum(posterior, axis=1, keepdims=True)
+        # Calculate log probability for each class
+        log_proba = []
+        for idx in range(self.n_classes_):
+            # Log prior
+            log_prior = np.log(self.class_prior_[idx])
+            
+            # Log likelihood (Gaussian PDF)
+            log_likelihood = -0.5 * np.sum(
+                np.log(2 * np.pi * self.var_[idx, :])
+                + ((X - self.theta_[idx, :]) ** 2) / self.var_[idx, :],
+                axis=1
+            )
+            
+            log_proba.append(log_prior + log_likelihood)
         
-        return posterior
-
-
-class MultinomialNB(NaiveBayes):
-    """
-    Multinomial Naive Bayes classifier
-    
-    Suitable for discrete features (e.g., word counts).
-    
-    Parameters
-    ----------
-    alpha : float, default=1.0
-        Additive (Laplace) smoothing parameter
-    
-    Example
-    -------
-    >>> from mayini.ml import MultinomialNB
-    >>> nb = MultinomialNB(alpha=1.0)
-    >>> nb.fit(X_train, y_train)
-    >>> predictions = nb.predict(X_test)
-    """
-
-    def __init__(self, alpha=1.0):
-        super().__init__()
-        self.alpha = alpha
-        self.feature_log_prob_ = None
-
-    def fit(self, X, y):
-        """Fit Multinomial Naive Bayes"""
-        super().fit(X, y)
-        X = np.array(X)
-        y = np.array(y)
+        log_proba = np.array(log_proba).T
         
-        n_features = X.shape[1]
-        n_classes = len(self.classes_)
+        # Convert log probabilities to probabilities
+        # Using log-sum-exp trick for numerical stability
+        log_proba_max = np.max(log_proba, axis=1, keepdims=True)
+        proba = np.exp(log_proba - log_proba_max)
+        proba /= np.sum(proba, axis=1, keepdims=True)
         
-        # Calculate feature probabilities for each class
-        self.feature_log_prob_ = np.zeros((n_classes, n_features))
-        
-        for idx, c in enumerate(self.classes_):
-            X_c = X[y == c]
-            # Count occurrences and apply smoothing
-            feature_count = X_c.sum(axis=0) + self.alpha
-            total_count = feature_count.sum()
-            self.feature_log_prob_[idx, :] = np.log(feature_count / total_count)
-        
-        return self
-
-    def predict(self, X):
-        """Predict class labels"""
-        X = np.array(X)
-        
-        # Calculate log posterior
-        log_prob = X @ self.feature_log_prob_.T
-        log_prob += np.log(self.class_prior_)
-        
-        return self.classes_[np.argmax(log_prob, axis=1)]
-
-    def predict_proba(self, X):
-        """Predict class probabilities"""
-        X = np.array(X)
-        
-        # Calculate log posterior
-        log_prob = X @ self.feature_log_prob_.T
-        log_prob += np.log(self.class_prior_)
-        
-        # Convert to probabilities using softmax
-        log_prob = log_prob - np.max(log_prob, axis=1, keepdims=True)
-        prob = np.exp(log_prob)
-        prob = prob / np.sum(prob, axis=1, keepdims=True)
-        
-        return prob
+        return proba

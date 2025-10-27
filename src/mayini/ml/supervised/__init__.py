@@ -3,7 +3,7 @@ from .linear_models import (
     Ridge,
     Lasso,
     LogisticRegression,
-    ElasticNet
+
 )
 
 from .naive_bayes import (
@@ -41,7 +41,7 @@ __all__ = [
     'Ridge',
     'Lasso',
     'LogisticRegression',
-    'ElasticNet',
+
     
     # Naive Bayes
     'GaussianNB',

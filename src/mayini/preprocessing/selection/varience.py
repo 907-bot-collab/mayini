@@ -9,15 +9,18 @@ class VarianceThreshold:
         self.variances_ = None
 
     def fit(self, X, y=None):
-        # Compute variance for each feature
+        if isinstance(X, list):
+            X = np.array(X)
         self.variances_ = np.var(X, axis=0)
         return self
 
     def transform(self, X):
+        if isinstance(X, list):
+            X = np.array(X)
         if self.variances_ is None:
-            raise ValueError("Fit the VarianceThreshold before calling transform.")
-        return X[:, self.variances_ > self.threshold]
+            raise ValueError("VarianceThreshold has not been fitted yet.")
+        mask = self.variances_ > self.threshold
+        return X[:, mask]
 
     def fit_transform(self, X, y=None):
-        self.fit(X, y)
-        return self.transform(X)
+        return self.fit(X, y).transform(X)

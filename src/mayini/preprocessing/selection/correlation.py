@@ -1,9 +1,7 @@
 import numpy as np
 
 class CorrelationSelector:
-    """
-    Feature selector that removes highly correlated features.
-    """
+    """Feature selector that removes highly correlated features."""
     def __init__(self, threshold=0.9):
         self.threshold = threshold
         self.selected_features_ = None

@@ -1,9 +1,7 @@
 import numpy as np
 
 class VarianceThreshold:
-    """
-    Feature selector that removes all low-variance features.
-    """
+    """Feature selector that removes all low-variance features."""
     def __init__(self, threshold=0.0):
         self.threshold = threshold
         self.variances_ = None

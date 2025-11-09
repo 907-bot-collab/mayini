@@ -13,22 +13,12 @@ class LinearSVC(BaseEstimator, ClassifierMixin):
     ----------
     C : float, default=1.0
         Regularization parameter. Lower values mean more regularization.
-        Controls the trade-off between training accuracy and model simplicity.
     learning_rate : float, default=0.001
         Learning rate for gradient descent optimization
     n_iterations : int, default=1000
         Number of training iterations for gradient descent
     random_state : int, default=None
         Random seed for reproducibility
-
-    Attributes
-    ----------
-    weights : array-like of shape (n_features,)
-        Weight vector learned during training
-    bias : float
-        Bias term (intercept)
-    classes_ : array-like
-        Unique class labels from training data
 
     Example
     -------
@@ -54,21 +44,7 @@ class LinearSVC(BaseEstimator, ClassifierMixin):
         self.classes_ = None
 
     def fit(self, X, y):
-        """
-        Fit linear SVC classifier using gradient descent
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data
-        y : array-like of shape (n_samples,)
-            Target labels (binary: must be 2 classes)
-
-        Returns
-        -------
-        self : LinearSVC
-            Fitted classifier
-        """
+        """Fit linear SVC classifier using gradient descent"""
         if self.random_state is not None:
             np.random.seed(self.random_state)
 
@@ -89,17 +65,14 @@ class LinearSVC(BaseEstimator, ClassifierMixin):
         # Gradient descent with hinge loss
         for iteration in range(self.n_iterations):
             for idx, x_i in enumerate(X):
-                # Check if margin condition is satisfied
                 margin = y_binary[idx] * (np.dot(x_i, self.weights) + self.bias)
 
                 if margin >= 1:
-                    # No hinge loss - only regularization
                     self.weights -= (
                         self.learning_rate
                         * (2 * self.C * self.weights / n_samples)
                     )
                 else:
-                    # Hinge loss - update weights
                     self.weights -= self.learning_rate * (
                         2 * self.C * self.weights / n_samples
                         - y_binary[idx] * x_i
@@ -110,43 +83,17 @@ class LinearSVC(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
-        """
-        Predict class labels
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples to predict
-
-        Returns
-        -------
-        y : array-like of shape (n_samples,)
-            Predicted class labels
-        """
+        """Predict class labels"""
         if not hasattr(self, "is_fitted_") or not self.is_fitted_:
             raise ValueError("Model must be fitted before prediction")
 
         X = np.array(X)
         linear_output = np.dot(X, self.weights) + self.bias
-
-        # Map back to original class labels
         predictions = np.where(linear_output >= 0, self.classes_[1], self.classes_[0])
         return predictions
 
     def decision_function(self, X):
-        """
-        Compute the decision function for samples
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples
-
-        Returns
-        -------
-        decision : array-like of shape (n_samples,)
-            Decision function values
-        """
+        """Compute the decision function for samples"""
         X = np.array(X)
         return np.dot(X, self.weights) + self.bias
 
@@ -156,8 +103,7 @@ class SVC(BaseEstimator, ClassifierMixin):
     Support Vector Classifier with Kernel Support
 
     SVM classifier with support for different kernel functions including
-    linear, RBF (Radial Basis Function), and polynomial kernels. Uses a
-    simplified Sequential Minimal Optimization (SMO) approach.
+    linear, RBF (Radial Basis Function), and polynomial kernels.
 
     Parameters
     ----------
@@ -166,23 +112,11 @@ class SVC(BaseEstimator, ClassifierMixin):
     kernel : str, default='rbf'
         Kernel type: 'linear', 'rbf', or 'poly'
     gamma : float or 'scale', default='scale'
-        Kernel coefficient for 'rbf' and 'poly'.
-        If 'scale', gamma = 1 / (n_features * X.var())
+        Kernel coefficient for 'rbf' and 'poly'
     degree : int, default=3
-        Degree of polynomial kernel (only used if kernel='poly')
+        Degree of polynomial kernel
     random_state : int, default=None
         Random seed for reproducibility
-
-    Attributes
-    ----------
-    support_vectors_ : array-like
-        Training samples that became support vectors
-    support_labels_ : array-like
-        Labels of support vectors
-    alphas_ : array-like
-        Lagrange multipliers for support vectors
-    b_ : float
-        Bias term
 
     Example
     -------
@@ -211,26 +145,11 @@ class SVC(BaseEstimator, ClassifierMixin):
         self.classes_ = None
 
     def _kernel_function(self, X1, X2):
-        """
-        Compute kernel matrix between two sets of samples
-
-        Parameters
-        ----------
-        X1 : array-like
-            First set of samples
-        X2 : array-like
-            Second set of samples
-
-        Returns
-        -------
-        K : array-like
-            Kernel matrix
-        """
+        """Compute kernel matrix between two sets of samples"""
         if self.kernel == "linear":
             return np.dot(X1, X2.T)
 
         elif self.kernel == "rbf":
-            # RBF kernel: exp(-gamma * ||x - y||^2)
             if self.gamma == "scale":
                 gamma = 1.0 / (X1.shape[1] * np.var(X1))
             else:
@@ -244,28 +163,13 @@ class SVC(BaseEstimator, ClassifierMixin):
             return np.exp(-gamma * sq_dists)
 
         elif self.kernel == "poly":
-            # Polynomial kernel: (x.y + 1)^degree
             return (np.dot(X1, X2.T) + 1) ** self.degree
 
         else:
             raise ValueError(f"Unknown kernel: {self.kernel}")
 
     def fit(self, X, y):
-        """
-        Fit SVM classifier using simplified SMO algorithm
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data
-        y : array-like of shape (n_samples,)
-            Target labels
-
-        Returns
-        -------
-        self : SVC
-            Fitted classifier
-        """
+        """Fit SVM classifier using simplified SMO algorithm"""
         if self.random_state is not None:
             np.random.seed(self.random_state)
 
@@ -286,8 +190,7 @@ class SVC(BaseEstimator, ClassifierMixin):
         # Compute kernel matrix
         K = self._kernel_function(X, X)
 
-        # Simplified training (store all as support vectors)
-        # In a full SMO implementation, we would only keep alphas > 0
+        # Store support vectors
         self.support_vectors_ = X
         self.support_labels_ = y_binary
         self.alphas_ = np.ones(n_samples) * 0.01
@@ -300,19 +203,7 @@ class SVC(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X):
-        """
-        Predict class labels
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples to predict
-
-        Returns
-        -------
-        y : array-like of shape (n_samples,)
-            Predicted class labels
-        """
+        """Predict class labels"""
         if not hasattr(self, "is_fitted_") or not self.is_fitted_:
             raise ValueError("Model must be fitted before prediction")
 
@@ -331,37 +222,13 @@ class SVC(BaseEstimator, ClassifierMixin):
         return predictions
 
     def decision_function(self, X):
-        """
-        Compute the decision function for samples
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples
-
-        Returns
-        -------
-        decision : array-like of shape (n_samples,)
-            Decision function values
-        """
+        """Compute the decision function for samples"""
         X = np.array(X)
         K = self._kernel_function(X, self.support_vectors_)
         return (K @ (self.alphas_ * self.support_labels_)) + self.b_
 
     def predict_proba(self, X):
-        """
-        Estimate probability of each class
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples
-
-        Returns
-        -------
-        proba : array-like of shape (n_samples, 2)
-            Class probability estimates
-        """
+        """Estimate probability of each class"""
         decision = self.decision_function(X)
 
         # Use sigmoid function to convert decision to probability
@@ -383,8 +250,7 @@ class SVR(BaseEstimator, RegressorMixin):
     C : float, default=1.0
         Regularization parameter
     epsilon : float, default=0.1
-        Epsilon in epsilon-SVR model. No penalty for prediction errors
-        within epsilon of the actual value.
+        Epsilon in epsilon-SVR model
     kernel : str, default='rbf'
         Kernel type: 'linear', 'rbf', or 'poly'
     gamma : float or 'scale', default='scale'
@@ -406,8 +272,13 @@ class SVR(BaseEstimator, RegressorMixin):
     """
 
     def __init__(
-        self, C=1.0, epsilon=0.1, kernel="rbf", gamma="scale", 
-        degree=3, random_state=None
+        self,
+        C=1.0,
+        epsilon=0.1,
+        kernel="rbf",
+        gamma="scale",
+        degree=3,
+        random_state=None,
     ):
         super().__init__()
         self.C = C
@@ -445,21 +316,7 @@ class SVR(BaseEstimator, RegressorMixin):
             raise ValueError(f"Unknown kernel: {self.kernel}")
 
     def fit(self, X, y):
-        """
-        Fit SVR regressor
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data
-        y : array-like of shape (n_samples,)
-            Target values
-
-        Returns
-        -------
-        self : SVR
-            Fitted regressor
-        """
+        """Fit SVR regressor"""
         if self.random_state is not None:
             np.random.seed(self.random_state)
 
@@ -472,13 +329,13 @@ class SVR(BaseEstimator, RegressorMixin):
         self.support_vectors_ = X
         K = self._kernel_function(X, X)
 
-        # Initialize alphas (simplified approach)
+        # Initialize alphas
         self.alphas_ = np.ones(n_samples) * 0.01
 
-        # Compute bias (intercept)
+        # Compute bias
         predictions = K @ self.alphas_
         errors = y - predictions
-        
+
         # Adjust bias based on epsilon tube
         mask = np.abs(errors) > self.epsilon
         if np.any(mask):
@@ -490,19 +347,7 @@ class SVR(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X):
-        """
-        Predict continuous values
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples to predict
-
-        Returns
-        -------
-        y : array-like of shape (n_samples,)
-            Predicted values
-        """
+        """Predict continuous values"""
         if not hasattr(self, "is_fitted_") or not self.is_fitted_:
             raise ValueError("Model must be fitted before prediction")
 
@@ -513,6 +358,7 @@ class SVR(BaseEstimator, RegressorMixin):
 
         # Make predictions
         return K @ self.alphas_ + self.b_
+
 
 class LinearSVR(BaseEstimator, RegressorMixin):
     """
@@ -532,7 +378,7 @@ class LinearSVR(BaseEstimator, RegressorMixin):
     n_iterations : int, default=1000
         Number of training iterations
     random_state : int, default=None
-        Random seed
+        Random seed for reproducibility
 
     Example
     -------
@@ -546,8 +392,12 @@ class LinearSVR(BaseEstimator, RegressorMixin):
     """
 
     def __init__(
-        self, C=1.0, epsilon=0.1, learning_rate=0.001, 
-        n_iterations=1000, random_state=None
+        self,
+        C=1.0,
+        epsilon=0.1,
+        learning_rate=0.001,
+        n_iterations=1000,
+        random_state=None,
     ):
         super().__init__()
         self.C = C
@@ -559,21 +409,7 @@ class LinearSVR(BaseEstimator, RegressorMixin):
         self.bias = None
 
     def fit(self, X, y):
-        """
-        Fit linear SVR regressor
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data
-        y : array-like of shape (n_samples,)
-            Target values
-
-        Returns
-        -------
-        self : LinearSVR
-            Fitted regressor
-        """
+        """Fit linear SVR regressor"""
         if self.random_state is not None:
             np.random.seed(self.random_state)
 
@@ -591,9 +427,8 @@ class LinearSVR(BaseEstimator, RegressorMixin):
                 y_pred = np.dot(x_i, self.weights) + self.bias
                 error = y[idx] - y_pred
 
-                # Update if error exceeds epsilon (outside epsilon tube)
+                # Update if error exceeds epsilon
                 if abs(error) > self.epsilon:
-                    # Gradient update
                     sign = np.sign(error)
                     self.weights += (
                         self.learning_rate * sign * x_i
@@ -610,19 +445,7 @@ class LinearSVR(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X):
-        """
-        Predict continuous values
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples to predict
-
-        Returns
-        -------
-        y : array-like of shape (n_samples,)
-            Predicted values
-        """
+        """Predict continuous values"""
         if not hasattr(self, "is_fitted_") or not self.is_fitted_:
             raise ValueError("Model must be fitted before prediction")
 
@@ -630,7 +453,7 @@ class LinearSVR(BaseEstimator, RegressorMixin):
         return np.dot(X, self.weights) + self.bias
 
 
-
 class SVM(SVC):
     """Alias for SVC - Support Vector Machine Classifier"""
+
     pass

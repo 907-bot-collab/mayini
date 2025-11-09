@@ -3,6 +3,7 @@ from .linear_models import (
     Ridge,
     Lasso,
     LogisticRegression,
+    ElasticNet
 
 )
 

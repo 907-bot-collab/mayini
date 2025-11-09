@@ -24,18 +24,18 @@ from .voting import (
 )
 
 # Stacking methods
-from .stacking import (
-    StackingClassifier,
-    StackingRegressor,
-    StackedEnsemble
-)
+#from .stacking import (
+    #StackingClassifier,
+    #StackingRegressor,
+    #StackedEnsemble
+#)
 
 # Utility functions
-from .utils import (
-    make_ensemble,
-    compare_models,
-    ensemble_weights_optimizer
-)
+#from .utils import (
+    #make_ensemble,
+    #compare_models,
+    #ensemble_weights_optimizer
+#)
 
 # Define what gets imported with "from mayini.ml.ensemble import *"
 __all__ = [
@@ -60,14 +60,14 @@ __all__ = [
     
     
     # Stacking Methods
-    'StackingClassifier',
-    'StackingRegressor',
-    'StackedEnsemble',
+    #'StackingClassifier',
+    #'StackingRegressor',
+    #'StackedEnsemble',
     
     # Utilities
-    'make_ensemble',
-    'compare_models',
-    'ensemble_weights_optimizer',
+    #'make_ensemble',
+    #'compare_models',
+    #'ensemble_weights_optimizer',
 ]
 
 DEFAULT_CONFIG = {

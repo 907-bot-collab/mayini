@@ -1,8 +1,6 @@
 from .bagging import (
     BaggingClassifier,
-    BaggingRegressor,
-    ExtraTreesClassifier,
-    ExtraTreesRegressor
+    BaggingRegressor
 )
 from ..supervised.tree_models import (
     RandomForestClassifier,
@@ -48,8 +46,7 @@ __all__ = [
     'BaggingRegressor',
     'RandomForestClassifier',
     'RandomForestRegressor',
-    'ExtraTreesClassifier',
-    'ExtraTreesRegressor',
+    
     
     # Boosting Methods
     'AdaBoostClassifier',

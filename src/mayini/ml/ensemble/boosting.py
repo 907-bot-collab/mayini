@@ -46,21 +46,7 @@ class AdaBoost(BaseEstimator, ClassifierMixin):
         self.classes_ = None
     
     def fit(self, X, y):
-        """
-        Fit AdaBoost classifier
-        
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data
-        y : array-like of shape (n_samples,)
-            Target labels (binary)
-        
-        Returns
-        -------
-        self : AdaBoost
-            Fitted classifier
-        """
+        """Fit AdaBoost classifier"""
         if self.random_state is not None:
             np.random.seed(self.random_state)
         
@@ -72,13 +58,9 @@ class AdaBoost(BaseEstimator, ClassifierMixin):
             raise ValueError("AdaBoost only supports binary classification")
         
         n_samples = X.shape[0]
-        
-        # Initialize sample weights (uniform)
         sample_weights = np.ones(n_samples) / n_samples
         
-        # Iteratively train weak learners
         for m in range(self.n_estimators):
-            # Train weak learner (simple decision stump on most important feature)
             best_error = float('inf')
             best_feature = 0
             best_threshold = 0
@@ -86,12 +68,10 @@ class AdaBoost(BaseEstimator, ClassifierMixin):
             for feature in range(X.shape[1]):
                 thresholds = np.unique(X[:, feature])
                 for threshold in thresholds:
-                    # Predict using this feature and threshold
-                    predictions = np.where(X[:, feature] <= threshold, 
-                                         self.classes_[0], 
+                    predictions = np.where(X[:, feature] <= threshold,
+                                         self.classes_[0],
                                          self.classes_[1])
                     
-                    # Calculate weighted error
                     errors = (predictions != y).astype(int)
                     weighted_error = np.sum(sample_weights * errors)
                     
@@ -100,24 +80,20 @@ class AdaBoost(BaseEstimator, ClassifierMixin):
                         best_feature = feature
                         best_threshold = threshold
             
-            # Avoid division by zero
             if best_error == 0:
                 best_error = 1e-10
             if best_error >= 0.5:
                 best_error = 0.4999
             
-            # Calculate estimator weight (alpha)
             alpha = self.learning_rate * np.log((1 - best_error) / best_error)
             self.estimator_weights_.append(alpha)
             
-            # Store weak learner parameters
             self.estimators_.append({
                 'feature': best_feature,
                 'threshold': best_threshold,
                 'alpha': alpha
             })
             
-            # Update sample weights
             predictions = np.where(X[:, best_feature] <= best_threshold,
                                  self.classes_[0],
                                  self.classes_[1])
@@ -130,39 +106,22 @@ class AdaBoost(BaseEstimator, ClassifierMixin):
         return self
     
     def predict(self, X):
-        """
-        Predict class labels
-        
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples to predict
-        
-        Returns
-        -------
-        y : array-like of shape (n_samples,)
-            Predicted class labels
-        """
+        """Predict class labels"""
         if not hasattr(self, 'is_fitted_') or not self.is_fitted_:
             raise ValueError("Model must be fitted before prediction")
         
         X = np.array(X)
         n_samples = X.shape[0]
-        
-        # Initialize predictions
         final_predictions = np.zeros(n_samples)
         
-        # Weighted majority vote
         for estimator in self.estimators_:
             feature = estimator['feature']
             threshold = estimator['threshold']
             alpha = estimator['alpha']
             
-            # Predict using this weak learner
             predictions = np.where(X[:, feature] <= threshold, 0, 1)
             final_predictions += alpha * (2 * predictions - 1)
         
-        # Return class labels
         return np.where(final_predictions >= 0, self.classes_[1], self.classes_[0])
 
 
@@ -316,41 +275,20 @@ class GradientBoosting(BaseEstimator, RegressorMixin):
         self.initial_prediction_ = None
     
     def fit(self, X, y):
-        """
-        Fit Gradient Boosting regressor
-        
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data
-        y : array-like of shape (n_samples,)
-            Target values
-        
-        Returns
-        -------
-        self : GradientBoosting
-            Fitted regressor
-        """
+        """Fit Gradient Boosting regressor"""
         if self.random_state is not None:
             np.random.seed(self.random_state)
         
         X = np.array(X)
         y = np.array(y)
         
-        # Initial prediction (mean of y)
         self.initial_prediction_ = np.mean(y)
         current_predictions = np.full_like(y, self.initial_prediction_, dtype=float)
         
-        # Iteratively fit trees to residuals
         for m in range(self.n_estimators):
-            # Calculate residuals (negative gradient for MSE loss)
             residuals = y - current_predictions
-            
-            # Fit decision tree to residuals
             tree_params = self._fit_tree_to_residuals(X, residuals)
             self.estimators_.append(tree_params)
-            
-            # Update predictions
             tree_predictions = self._predict_with_tree(X, tree_params)
             current_predictions += self.learning_rate * tree_predictions
         
@@ -376,7 +314,6 @@ class GradientBoosting(BaseEstimator, RegressorMixin):
                 left_pred = np.mean(residuals[left_mask])
                 right_pred = np.mean(residuals[right_mask])
                 
-                # Calculate MSE
                 mse = np.sum((residuals[left_mask] - left_pred) ** 2) + \
                       np.sum((residuals[right_mask] - right_pred) ** 2)
                 
@@ -405,28 +342,13 @@ class GradientBoosting(BaseEstimator, RegressorMixin):
         return predictions
     
     def predict(self, X):
-        """
-        Predict target values
-        
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Samples to predict
-        
-        Returns
-        -------
-        y : array-like of shape (n_samples,)
-            Predicted values
-        """
+        """Predict target values"""
         if not hasattr(self, 'is_fitted_') or not self.is_fitted_:
             raise ValueError("Model must be fitted before prediction")
         
         X = np.array(X)
-        
-        # Start with initial prediction
         predictions = np.full(X.shape[0], self.initial_prediction_)
         
-        # Add predictions from all trees
         for tree_params in self.estimators_:
             tree_preds = self._predict_with_tree(X, tree_params)
             predictions += self.learning_rate * tree_preds

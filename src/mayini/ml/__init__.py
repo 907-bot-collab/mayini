@@ -25,8 +25,8 @@ from .unsupervised.decomposition import PCA, LDA
 from .ensemble.bagging import BaggingClassifier, BaggingRegressor
 from .ensemble.voting import VotingClassifier, VotingRegressor
 from .ensemble.boosting import (
-    AdaBoost,
-    AdaBoostClassifier,
+    #AdaBoost,
+    #AdaBoostClassifier,
     GradientBoosting,
     RandomForest,
 )

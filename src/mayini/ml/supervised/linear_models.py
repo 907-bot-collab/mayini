@@ -199,6 +199,53 @@ class Lasso(BaseRegressor):
         X, _ = self._validate_input(X)
         return X @ self.coef_ + self.intercept_
 
+class ElasticNet(BaseEstimator, RegressorMixin):
+    """
+    Elastic Net Regression (L1 + L2 regularization)
+    
+    Combines Ridge (L2) and Lasso (L1) penalties.
+    """
+    def __init__(self, alpha=1.0, l1_ratio=0.5, max_iter=1000, learning_rate=0.001):
+        super().__init__()
+        self.alpha = alpha
+        self.l1_ratio = l1_ratio
+        self.max_iter = max_iter
+        self.learning_rate = learning_rate
+        self.weights = None
+        self.bias = None
+
+    def fit(self, X, y):
+        X = np.array(X)
+        y = np.array(y)
+        n_samples, n_features = X.shape
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+
+        for _ in range(self.max_iter):
+            # Predictions
+            y_pred = np.dot(X, self.weights) + self.bias
+            errors = y_pred - y
+            
+            # Gradient (L1 + L2 combined)
+            l2_penalty = 2 * self.alpha * (1 - self.l1_ratio) * self.weights
+            l1_penalty = self.alpha * self.l1_ratio * np.sign(self.weights)
+            
+            # Update weights
+            self.weights -= self.learning_rate * (
+                2 * np.dot(X.T, errors) / n_samples + l2_penalty + l1_penalty
+            )
+            self.bias -= self.learning_rate * 2 * np.mean(errors)
+
+        self.is_fitted_ = True
+        return self
+
+    def predict(self, X):
+        if not hasattr(self, "is_fitted_") or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+        X = np.array(X)
+        return np.dot(X, self.weights) + self.bias
+
+
 
 class LogisticRegression(BaseClassifier):
     """

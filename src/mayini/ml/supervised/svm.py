@@ -514,6 +514,122 @@ class SVR(BaseEstimator, RegressorMixin):
         # Make predictions
         return K @ self.alphas_ + self.b_
 
+class LinearSVR(BaseEstimator, RegressorMixin):
+    """
+    Linear Support Vector Regressor using gradient descent
+
+    A fast SVR implementation for linear regression using gradient
+    descent optimization. Optimized for linear relationships.
+
+    Parameters
+    ----------
+    C : float, default=1.0
+        Regularization parameter
+    epsilon : float, default=0.1
+        Epsilon in epsilon-SVR model
+    learning_rate : float, default=0.001
+        Learning rate for gradient descent
+    n_iterations : int, default=1000
+        Number of training iterations
+    random_state : int, default=None
+        Random seed
+
+    Example
+    -------
+    >>> from mayini.ml import LinearSVR
+    >>> import numpy as np
+    >>> X = np.array([[1, 2], [2, 3], [3, 4]])
+    >>> y = np.array([1.5, 2.5, 3.5])
+    >>> svr = LinearSVR(C=1.0, epsilon=0.1)
+    >>> svr.fit(X, y)
+    >>> svr.predict([[2, 3]])
+    """
+
+    def __init__(
+        self, C=1.0, epsilon=0.1, learning_rate=0.001, 
+        n_iterations=1000, random_state=None
+    ):
+        super().__init__()
+        self.C = C
+        self.epsilon = epsilon
+        self.learning_rate = learning_rate
+        self.n_iterations = n_iterations
+        self.random_state = random_state
+        self.weights = None
+        self.bias = None
+
+    def fit(self, X, y):
+        """
+        Fit linear SVR regressor
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data
+        y : array-like of shape (n_samples,)
+            Target values
+
+        Returns
+        -------
+        self : LinearSVR
+            Fitted regressor
+        """
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+
+        X = np.array(X)
+        y = np.array(y)
+
+        n_samples, n_features = X.shape
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+
+        # Gradient descent with epsilon tube
+        for iteration in range(self.n_iterations):
+            for idx, x_i in enumerate(X):
+                # Predict
+                y_pred = np.dot(x_i, self.weights) + self.bias
+                error = y[idx] - y_pred
+
+                # Update if error exceeds epsilon (outside epsilon tube)
+                if abs(error) > self.epsilon:
+                    # Gradient update
+                    sign = np.sign(error)
+                    self.weights += (
+                        self.learning_rate * sign * x_i
+                        - self.learning_rate * self.C * self.weights / n_samples
+                    )
+                    self.bias += self.learning_rate * sign
+                else:
+                    # Only regularization update
+                    self.weights -= (
+                        self.learning_rate * self.C * self.weights / n_samples
+                    )
+
+        self.is_fitted_ = True
+        return self
+
+    def predict(self, X):
+        """
+        Predict continuous values
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Samples to predict
+
+        Returns
+        -------
+        y : array-like of shape (n_samples,)
+            Predicted values
+        """
+        if not hasattr(self, "is_fitted_") or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+
+        X = np.array(X)
+        return np.dot(X, self.weights) + self.bias
+
+
 
 class SVM(SVC):
     """Alias for SVC - Support Vector Machine Classifier"""

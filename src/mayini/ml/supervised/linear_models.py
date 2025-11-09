@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import linalg
-from ..base import BaseRegressor, BaseClassifier
+from ..base import BaseRegressor, BaseClassifier, BaseEstimator, ClassifierMixin, RegressorMixin
 
 
 class LinearRegression(BaseRegressor):

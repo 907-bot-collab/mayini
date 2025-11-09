@@ -4,6 +4,10 @@ from .bagging import (
     ExtraTreesClassifier,
     ExtraTreesRegressor
 )
+from ..supervised.tree_models import (
+    RandomForestClassifier,
+    RandomForestRegressor,
+)
 
 # Boosting methods
 from .boosting import (

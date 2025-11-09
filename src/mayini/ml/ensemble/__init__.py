@@ -8,10 +8,10 @@ from ..supervised.tree_models import (
 )
 # Boosting methods
 #from .boosting import (
-    #AdaBoostClassifier,
+    AdaBoostClassifier,
     
-    #GradientBoostingClassifier,
-   # GradientBoostingRegressor,
+    GradientBoostingClassifier,
+   GradientBoostingRegressor,
     #XGBoostClassifier,
    # XGBoostRegressor
 #)

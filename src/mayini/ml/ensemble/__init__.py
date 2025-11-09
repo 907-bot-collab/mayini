@@ -20,8 +20,7 @@ from ..supervised.tree_models import (
 from .voting import (
     VotingClassifier,
     VotingRegressor,
-    SoftVotingClassifier,
-    HardVotingClassifier
+   
 )
 
 # Stacking methods
@@ -58,8 +57,7 @@ __all__ = [
     # Voting Methods
     'VotingClassifier',
     'VotingRegressor',
-    'SoftVotingClassifier',
-    'HardVotingClassifier',
+    
     
     # Stacking Methods
     'StackingClassifier',

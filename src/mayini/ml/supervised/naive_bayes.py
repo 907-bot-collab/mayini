@@ -1,105 +1,130 @@
+"""Naive Bayes algorithms"""
 import numpy as np
-from collections import defaultdict
+from ..base import BaseEstimator, ClassifierMixin
 
-class GaussianNB:
-    """Gaussian Naive Bayes classifier."""
+
+class NaiveBayes(BaseEstimator, ClassifierMixin):
+    """
+    Base Naive Bayes classifier
+    
+    Base class for Naive Bayes algorithms.
+    """
+
     def __init__(self):
-        self.classes = None
-        self.mean = {}
-        self.var = {}
-        self.priors = {}
+        self.classes_ = None
+        self.class_prior_ = None
 
     def fit(self, X, y):
-        if isinstance(X, list):
-            X = np.array(X)
-        if isinstance(y, list):
-            y = np.array(y)
-        self.classes = np.unique(y)
-        n_samples = X.shape[0]
-        for c in self.classes:
-            X_c = X[y == c]
-            self.mean[c] = np.mean(X_c, axis=0)
-            self.var[c] = np.var(X_c, axis=0)
-            self.priors[c] = X_c.shape[0] / n_samples
+        """Fit Naive Bayes classifier"""
+        X = np.array(X)
+        y = np.array(y)
+        
+        self.classes_ = np.unique(y)
+        n_classes = len(self.classes_)
+        
+        # Calculate class priors
+        self.class_prior_ = np.zeros(n_classes)
+        for idx, c in enumerate(self.classes_):
+            self.class_prior_[idx] = np.mean(y == c)
+        
         return self
 
     def predict(self, X):
-        if isinstance(X, list):
-            X = np.array(X)
-        predictions = []
-        for x in X:
-            posteriors = {}
-            for c in self.classes:
-                prior = np.log(self.priors[c])
-                numerator = np.exp(- (x - self.mean[c]) ** 2 / (2 * self.var[c]))
-                denominator = np.sqrt(2 * np.pi * self.var[c])
-                posterior = np.sum(np.log(numerator / denominator)) + prior
-                posteriors[c] = posterior
-            predictions.append(max(posteriors, key=posteriors.get))
-        return np.array(predictions)
-
-    def score(self, X, y):
-        return np.mean(self.predict(X) == y)
+        """Predict class labels"""
+        raise NotImplementedError("Subclasses must implement predict method")
 
 
-class MultinomialNB:
-    """Multinomial Naive Bayes classifier."""
+class GaussianNB(NaiveBayes):
+    """Gaussian Naive Bayes classifier"""
+
+    def __init__(self):
+        super().__init__()
+        self.theta_ = None
+        self.var_ = None
+
+    def fit(self, X, y):
+        """Fit Gaussian Naive Bayes"""
+        super().fit(X, y)
+        X = np.array(X)
+        y = np.array(y)
+        
+        n_features = X.shape[1]
+        n_classes = len(self.classes_)
+        
+        self.theta_ = np.zeros((n_classes, n_features))
+        self.var_ = np.zeros((n_classes, n_features))
+        
+        for idx, c in enumerate(self.classes_):
+            X_c = X[y == c]
+            self.theta_[idx, :] = X_c.mean(axis=0)
+            self.var_[idx, :] = X_c.var(axis=0) + 1e-9
+        
+        return self
+
+    def _calculate_likelihood(self, X):
+        """Calculate likelihood for each class"""
+        likelihoods = []
+        
+        for idx, c in enumerate(self.classes_):
+            mean = self.theta_[idx]
+            var = self.var_[idx]
+            
+            log_prob = -0.5 * np.sum(np.log(2.0 * np.pi * var))
+            log_prob -= 0.5 * np.sum(((X - mean) ** 2) / var, axis=1)
+            
+            likelihoods.append(log_prob)
+        
+        return np.array(likelihoods).T
+
+    def predict(self, X):
+        """Predict class labels"""
+        X = np.array(X)
+        log_likelihood = self._calculate_likelihood(X)
+        log_prior = np.log(self.class_prior_)
+        log_posterior = log_likelihood + log_prior
+        return self.classes_[np.argmax(log_posterior, axis=1)]
+
+
+class MultinomialNB(NaiveBayes):
+    """Multinomial Naive Bayes classifier"""
+
     def __init__(self, alpha=1.0):
+        super().__init__()
         self.alpha = alpha
-        self.classes = None
-        self.feature_log_prob = {}
-        self.class_log_prior = {}
-        self.n_features = None
+        self.feature_log_prob_ = None
 
     def fit(self, X, y):
-        if isinstance(X, list):
-            X = np.array(X)
-        if isinstance(y, list):
-            y = np.array(y)
-        self.classes = np.unique(y)
-        n_samples, n_features = X.shape
-        self.n_features = n_features
-        for c in self.classes:
+        """Fit Multinomial Naive Bayes"""
+        super().fit(X, y)
+        X = np.array(X)
+        y = np.array(y)
+        
+        n_features = X.shape[1]
+        n_classes = len(self.classes_)
+        
+        self.feature_log_prob_ = np.zeros((n_classes, n_features))
+        
+        for idx, c in enumerate(self.classes_):
             X_c = X[y == c]
-            feature_count = np.sum(X_c, axis=0)
-            self.feature_log_prob[c] = np.log(
-                (feature_count + self.alpha) / (np.sum(feature_count) + self.alpha * n_features)
-            )
-            self.class_log_prior[c] = np.log(X_c.shape[0] / n_samples)
+            feature_count = X_c.sum(axis=0) + self.alpha
+            total_count = feature_count.sum()
+            self.feature_log_prob_[idx, :] = np.log(feature_count / total_count)
+        
         return self
 
     def predict(self, X):
-        if isinstance(X, list):
-            X = np.array(X)
-        predictions = []
-        for x in X:
-            posteriors = {}
-            for c in self.classes:
-                posterior = self.class_log_prior[c] + np.sum(x * self.feature_log_prob[c])
-                posteriors[c] = posterior
-            predictions.append(max(posteriors, key=posteriors.get))
-        return np.array(predictions)
+        """Predict class labels"""
+        X = np.array(X)
+        log_prob = X @ self.feature_log_prob_.T
+        log_prob += np.log(self.class_prior_)
+        return self.classes_[np.argmax(log_prob, axis=1)]
 
-    def score(self, X, y):
-        return np.mean(self.predict(X) == y)
 
 class BernoulliNB(NaiveBayes):
     """
     Bernoulli Naive Bayes classifier
     
     Suitable for binary features (0 or 1).
-    
-    Parameters
-    ----------
-    alpha : float, default=1.0
-        Additive (Laplace) smoothing parameter
-    
-    Example
-    -------
-    >>> from mayini.ml import BernoulliNB
-    >>> nb = BernoulliNB(alpha=1.0)
-    >>> nb.fit(X_train, y_train)
-    >>> predictions = nb.predict(X_test)
     """
 
     def __init__(self, alpha=1.0):
@@ -116,12 +141,10 @@ class BernoulliNB(NaiveBayes):
         n_features = X.shape[1]
         n_classes = len(self.classes_)
         
-        # Calculate feature probabilities for each class
         self.feature_log_prob_ = np.zeros((n_classes, n_features))
         
         for idx, c in enumerate(self.classes_):
             X_c = X[y == c]
-            # Count occurrences (for binary features)
             feature_count = X_c.sum(axis=0) + self.alpha
             total_count = len(X_c) + 2 * self.alpha
             self.feature_log_prob_[idx, :] = np.log(feature_count / total_count)
@@ -131,25 +154,6 @@ class BernoulliNB(NaiveBayes):
     def predict(self, X):
         """Predict class labels"""
         X = np.array(X)
-        
-        # Calculate log posterior
         log_prob = X @ self.feature_log_prob_.T
         log_prob += np.log(self.class_prior_)
-        
         return self.classes_[np.argmax(log_prob, axis=1)]
-
-    def predict_proba(self, X):
-        """Predict class probabilities"""
-        X = np.array(X)
-        
-        # Calculate log posterior
-        log_prob = X @ self.feature_log_prob_.T
-        log_prob += np.log(self.class_prior_)
-        
-        # Convert to probabilities using softmax
-        log_prob = log_prob - np.max(log_prob, axis=1, keepdims=True)
-        prob = np.exp(log_prob)
-        prob = prob / np.sum(prob, axis=1, keepdims=True)
-        
-        return prob
-

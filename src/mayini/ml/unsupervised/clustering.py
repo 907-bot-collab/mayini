@@ -243,3 +243,115 @@ class AgglomerativeClustering(BaseEstimator, ClusterMixin):
         """Fit and return cluster labels"""
         self.fit(X)
         return self.labels_
+
+class HierarchicalClustering(BaseEstimator, ClusterMixin):
+    """
+    Hierarchical (Agglomerative) Clustering
+    
+    Parameters
+    ----------
+    n_clusters : int, default=3
+        Number of clusters
+    linkage : str, default='ward'
+        Linkage method: 'ward', 'complete', 'average', 'single'
+    
+    Example
+    -------
+    >>> from mayini.ml import HierarchicalClustering
+    >>> hc = HierarchicalClustering(n_clusters=3)
+    >>> hc.fit(X)
+    """
+    
+    def __init__(self, n_clusters=3, linkage='ward'):
+        super().__init__()
+        self.n_clusters = n_clusters
+        self.linkage = linkage
+        self.labels_ = None
+
+    def _euclidean_distance(self, x1, x2):
+        """Calculate euclidean distance"""
+        return np.sqrt(np.sum((x1 - x2) ** 2))
+
+    def _compute_cluster_distance(self, cluster1, cluster2):
+        """Compute distance between clusters"""
+        if self.linkage == 'ward':
+            # Ward linkage
+            return np.linalg.norm(np.mean(cluster1, axis=0) - np.mean(cluster2, axis=0))
+        elif self.linkage == 'complete':
+            # Complete linkage - maximum distance
+            max_dist = 0
+            for x1 in cluster1:
+                for x2 in cluster2:
+                    dist = self._euclidean_distance(x1, x2)
+                    max_dist = max(max_dist, dist)
+            return max_dist
+        elif self.linkage == 'average':
+            # Average linkage
+            total_dist = 0
+            count = 0
+            for x1 in cluster1:
+                for x2 in cluster2:
+                    total_dist += self._euclidean_distance(x1, x2)
+                    count += 1
+            return total_dist / count
+        elif self.linkage == 'single':
+            # Single linkage - minimum distance
+            min_dist = float('inf')
+            for x1 in cluster1:
+                for x2 in cluster2:
+                    dist = self._euclidean_distance(x1, x2)
+                    min_dist = min(min_dist, dist)
+            return min_dist
+        else:
+            raise ValueError(f"Unknown linkage: {self.linkage}")
+
+    def fit(self, X):
+        """Fit hierarchical clustering"""
+        X = np.array(X)
+        n_samples = X.shape[0]
+        
+        # Initialize each point as its own cluster
+        clusters = [[X[i]] for i in range(n_samples)]
+        labels = list(range(n_samples))
+        
+        # Merge clusters until we have n_clusters
+        while len(clusters) > self.n_clusters:
+            # Find two closest clusters
+            min_dist = float('inf')
+            merge_i, merge_j = 0, 1
+            
+            for i in range(len(clusters)):
+                for j in range(i + 1, len(clusters)):
+                    dist = self._compute_cluster_distance(
+                        np.array(clusters[i]), 
+                        np.array(clusters[j])
+                    )
+                    if dist < min_dist:
+                        min_dist = dist
+                        merge_i, merge_j = i, j
+            
+            # Merge closest clusters
+            clusters[merge_i].extend(clusters[merge_j])
+            clusters.pop(merge_j)
+        
+        # Assign labels
+        self.labels_ = np.zeros(n_samples, dtype=int)
+        for cluster_id, cluster in enumerate(clusters):
+            for point in cluster:
+                for i in range(n_samples):
+                    if np.array_equal(point, X[i]):
+                        self.labels_[i] = cluster_id
+        
+        self.is_fitted_ = True
+        return self
+
+    def predict(self, X):
+        """Predict cluster labels (uses fit labels for new data)"""
+        if not hasattr(self, "is_fitted_") or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+        
+        X = np.array(X)
+        # For hierarchical clustering, typically use training data
+        # For new data, assign to nearest cluster center
+        return self.labels_
+

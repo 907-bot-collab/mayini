@@ -22,14 +22,17 @@ from .unsupervised.clustering import KMeans, DBSCAN, HierarchicalClustering
 from .unsupervised.decomposition import PCA, LDA
 
 # Ensemble methods
-from .ensemble.bagging import BaggingClassifier, BaggingRegressor
-from .ensemble.voting import VotingClassifier, VotingRegressor
-from .ensemble.boosting import (
+
+from .ensemble import (
+    BaggingClassifier,
+    BaggingRegressor,
+    RandomForestClassifier,
+    RandomForestRegressor,
     AdaBoost,
     AdaBoostClassifier,
     GradientBoosting,
-    RandomForest,
 )
+
 
 # Base classes
 from .base import BaseClassifier, BaseRegressor
@@ -72,12 +75,11 @@ __all__ = [
     # Ensemble - Bagging
     "BaggingClassifier",
     "BaggingRegressor",
-    # Ensemble - Voting
-    "VotingClassifier",
-    "VotingRegressor",
     # Ensemble - Boosting
     "AdaBoost",
     "AdaBoostClassifier",
     "GradientBoosting",
     "RandomForest",
+    "RandomForestClassifier",
+    "RandomForestRegressor",
 ]

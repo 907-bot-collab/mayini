@@ -30,6 +30,7 @@ from .knn import (
 from .svm import (
     SVC,
     SVR,
+    SVM,
     LinearSVC,
     LinearSVR
 )

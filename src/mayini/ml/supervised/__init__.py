@@ -66,6 +66,7 @@ __all__ = [
     # Support Vector Machines
     'SVC',
     'SVR',
+    'SVM',
     'LinearSVC',
     'LinearSVR',
 ]

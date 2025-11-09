@@ -82,3 +82,74 @@ class MultinomialNB:
 
     def score(self, X, y):
         return np.mean(self.predict(X) == y)
+
+class BernoulliNB(NaiveBayes):
+    """
+    Bernoulli Naive Bayes classifier
+    
+    Suitable for binary features (0 or 1).
+    
+    Parameters
+    ----------
+    alpha : float, default=1.0
+        Additive (Laplace) smoothing parameter
+    
+    Example
+    -------
+    >>> from mayini.ml import BernoulliNB
+    >>> nb = BernoulliNB(alpha=1.0)
+    >>> nb.fit(X_train, y_train)
+    >>> predictions = nb.predict(X_test)
+    """
+
+    def __init__(self, alpha=1.0):
+        super().__init__()
+        self.alpha = alpha
+        self.feature_log_prob_ = None
+
+    def fit(self, X, y):
+        """Fit Bernoulli Naive Bayes"""
+        super().fit(X, y)
+        X = np.array(X)
+        y = np.array(y)
+        
+        n_features = X.shape[1]
+        n_classes = len(self.classes_)
+        
+        # Calculate feature probabilities for each class
+        self.feature_log_prob_ = np.zeros((n_classes, n_features))
+        
+        for idx, c in enumerate(self.classes_):
+            X_c = X[y == c]
+            # Count occurrences (for binary features)
+            feature_count = X_c.sum(axis=0) + self.alpha
+            total_count = len(X_c) + 2 * self.alpha
+            self.feature_log_prob_[idx, :] = np.log(feature_count / total_count)
+        
+        return self
+
+    def predict(self, X):
+        """Predict class labels"""
+        X = np.array(X)
+        
+        # Calculate log posterior
+        log_prob = X @ self.feature_log_prob_.T
+        log_prob += np.log(self.class_prior_)
+        
+        return self.classes_[np.argmax(log_prob, axis=1)]
+
+    def predict_proba(self, X):
+        """Predict class probabilities"""
+        X = np.array(X)
+        
+        # Calculate log posterior
+        log_prob = X @ self.feature_log_prob_.T
+        log_prob += np.log(self.class_prior_)
+        
+        # Convert to probabilities using softmax
+        log_prob = log_prob - np.max(log_prob, axis=1, keepdims=True)
+        prob = np.exp(log_prob)
+        prob = prob / np.sum(prob, axis=1, keepdims=True)
+        
+        return prob
+

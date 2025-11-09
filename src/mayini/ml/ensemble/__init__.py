@@ -1,8 +1,6 @@
 from .bagging import (
     BaggingClassifier,
     BaggingRegressor,
-    RandomForestClassifier,
-    RandomForestRegressor,
     ExtraTreesClassifier,
     ExtraTreesRegressor
 )

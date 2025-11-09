@@ -48,12 +48,12 @@ __all__ = [
     
     
     # Boosting Methods
-    'AdaBoostClassifier',
-    'AdaBoostRegressor',
-    'GradientBoostingClassifier',
-    'GradientBoostingRegressor',
-    'XGBoostClassifier',
-    'XGBoostRegressor',
+    #'AdaBoostClassifier',
+    #'AdaBoostRegressor',
+    #'GradientBoostingClassifier',
+    #'GradientBoostingRegressor',
+    #'XGBoostClassifier',
+    #'XGBoostRegressor',
     
     # Voting Methods
     'VotingClassifier',

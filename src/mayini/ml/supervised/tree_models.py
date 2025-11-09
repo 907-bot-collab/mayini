@@ -1,5 +1,5 @@
 import numpy as np
-from ..base import BaseClassifier, BaseRegressor
+from ..base import BaseEstimator, ClassifierMixin, RegressorMixin
 
 
 class Node:
@@ -8,6 +8,22 @@ class Node:
     def __init__(
         self, feature=None, threshold=None, left=None, right=None, value=None
     ):
+        """
+        Initialize a decision tree node
+
+        Parameters
+        ----------
+        feature : int, optional
+            Feature index to split on
+        threshold : float, optional
+            Threshold value for split
+        left : Node, optional
+            Left child node
+        right : Node, optional
+            Right child node
+        value : scalar, optional
+            Class label or regression value (for leaf nodes)
+        """
         self.feature = feature
         self.threshold = threshold
         self.left = left
@@ -19,26 +35,43 @@ class Node:
         return self.value is not None
 
 
-class DecisionTreeClassifier(BaseClassifier):
+class DecisionTreeClassifier(BaseEstimator, ClassifierMixin):
     """
     Decision Tree Classifier using CART algorithm
+
+    Builds a decision tree using the Classification and Regression Trees (CART)
+    algorithm, which uses Gini impurity or entropy as the splitting criterion.
 
     Parameters
     ----------
     max_depth : int, default=None
-        Maximum depth of the tree
+        Maximum depth of the tree. If None, tree grows until all leaves
+        are pure or contain < min_samples_split samples.
     min_samples_split : int, default=2
-        Minimum samples required to split
+        Minimum number of samples required to split a node.
     min_samples_leaf : int, default=1
-        Minimum samples required at leaf
+        Minimum number of samples required at a leaf node.
     criterion : str, default='gini'
-        Split criterion ('gini' or 'entropy')
+        Function to measure split quality. Options: 'gini' or 'entropy'.
+
+    Attributes
+    ----------
+    tree_ : Node
+        The trained decision tree structure
+    classes_ : array-like
+        Unique class labels from training data
+    n_classes_ : int
+        Number of unique classes
 
     Example
     -------
     >>> from mayini.ml import DecisionTreeClassifier
+    >>> import numpy as np
+    >>> X = np.array([[1, 2], [2, 3], [3, 4]])
+    >>> y = np.array([0, 1, 1])
     >>> dt = DecisionTreeClassifier(max_depth=5)
-    >>> dt.fit(X_train, y_train)
+    >>> dt.fit(X, y)
+    >>> dt.predict([[2, 3]])
     """
 
     def __init__(
@@ -56,9 +89,14 @@ class DecisionTreeClassifier(BaseClassifier):
         self.tree_ = None
         self.n_classes_ = None
         self.classes_ = None
+        self.class_map_ = None
 
     def _gini(self, y):
-        """Calculate Gini impurity"""
+        """
+        Calculate Gini impurity
+
+        Gini = 1 - sum(p_i^2) where p_i is the probability of class i
+        """
         m = len(y)
         if m == 0:
             return 0
@@ -67,7 +105,11 @@ class DecisionTreeClassifier(BaseClassifier):
         return 1 - np.sum(probabilities**2)
 
     def _entropy(self, y):
-        """Calculate entropy"""
+        """
+        Calculate entropy
+
+        Entropy = -sum(p_i * log2(p_i)) where p_i is the probability of class i
+        """
         m = len(y)
         if m == 0:
             return 0
@@ -79,17 +121,24 @@ class DecisionTreeClassifier(BaseClassifier):
         """Calculate impurity based on criterion"""
         if self.criterion == "gini":
             return self._gini(y)
-        else:
+        elif self.criterion == "entropy":
             return self._entropy(y)
+        else:
+            raise ValueError(f"Unknown criterion: {self.criterion}")
 
     def _split(self, X, y, feature, threshold):
         """Split dataset based on feature and threshold"""
         left_mask = X[:, feature] <= threshold
         right_mask = ~left_mask
-        return X[left_mask], X[right_mask], y[left_mask], y[right_mask]
+        return (
+            X[left_mask],
+            X[right_mask],
+            y[left_mask],
+            y[right_mask],
+        )
 
     def _best_split(self, X, y):
-        """Find the best split"""
+        """Find the best split to minimize impurity"""
         best_gain = -1
         best_feature = None
         best_threshold = None
@@ -150,7 +199,9 @@ class DecisionTreeClassifier(BaseClassifier):
             return Node(value=leaf_value)
 
         # Split and recurse
-        X_left, X_right, y_left, y_right = self._split(X, y, best_feature, best_threshold)
+        (X_left, X_right, y_left, y_right) = self._split(
+            X, y, best_feature, best_threshold
+        )
         left_subtree = self._build_tree(X_left, y_left, depth + 1)
         right_subtree = self._build_tree(X_right, y_right, depth + 1)
 
@@ -162,8 +213,24 @@ class DecisionTreeClassifier(BaseClassifier):
         )
 
     def fit(self, X, y):
-        """Fit decision tree"""
-        X, y = self._validate_input(X, y)
+        """
+        Fit decision tree classifier
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data
+        y : array-like of shape (n_samples,)
+            Target labels
+
+        Returns
+        -------
+        self : DecisionTreeClassifier
+            Fitted classifier
+        """
+        X = np.array(X)
+        y = np.array(y)
+
         self.classes_ = np.unique(y)
         self.n_classes_ = len(self.classes_)
 
@@ -176,7 +243,7 @@ class DecisionTreeClassifier(BaseClassifier):
         return self
 
     def _traverse_tree(self, x, node):
-        """Traverse tree to make prediction"""
+        """Traverse tree to make prediction for a single sample"""
         if node.is_leaf():
             return node.value
 
@@ -185,36 +252,60 @@ class DecisionTreeClassifier(BaseClassifier):
         return self._traverse_tree(x, node.right)
 
     def predict(self, X):
-        """Predict class labels"""
-        self._check_is_fitted()
-        X, _ = self._validate_input(X)
-        predictions = np.array([self._traverse_tree(x, self.tree_) for x in X])
+        """
+        Predict class labels
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Samples to predict
+
+        Returns
+        -------
+        y : array-like of shape (n_samples,)
+            Predicted class labels
+        """
+        if not hasattr(self, "is_fitted_") or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+
+        X = np.array(X)
+        predictions = np.array(
+            [self._traverse_tree(x, self.tree_) for x in X]
+        )
         return np.array([self.classes_[int(p)] for p in predictions])
 
 
-# ============================================================================
-# FILE 14: src/mayini/ml/supervised/tree_models.py (continued)
-# BLACK-FORMATTED VERSION (Part 2 - DecisionTreeRegressor & RandomForest)
-# ============================================================================
+class DecisionTree(DecisionTreeClassifier):
+    """Alias for DecisionTreeClassifier for backward compatibility"""
 
-class DecisionTreeRegressor(BaseRegressor):
+    pass
+
+
+class DecisionTreeRegressor(BaseEstimator, RegressorMixin):
     """
-    Decision Tree Regressor
+    Decision Tree Regressor using CART algorithm
+
+    Builds a regression tree using the CART algorithm with mean squared
+    error (MSE) as the splitting criterion.
 
     Parameters
     ----------
     max_depth : int, default=None
         Maximum depth of the tree
     min_samples_split : int, default=2
-        Minimum samples required to split
+        Minimum samples required to split a node
     min_samples_leaf : int, default=1
-        Minimum samples required at leaf
+        Minimum samples required at a leaf node
 
     Example
     -------
     >>> from mayini.ml import DecisionTreeRegressor
+    >>> import numpy as np
+    >>> X = np.array([[1, 2], [2, 3], [3, 4]])
+    >>> y = np.array([1.5, 2.5, 3.5])
     >>> dt = DecisionTreeRegressor(max_depth=5)
-    >>> dt.fit(X_train, y_train)
+    >>> dt.fit(X, y)
+    >>> dt.predict([[2, 3]])
     """
 
     def __init__(self, max_depth=None, min_samples_split=2, min_samples_leaf=1):
@@ -225,19 +316,24 @@ class DecisionTreeRegressor(BaseRegressor):
         self.tree_ = None
 
     def _mse(self, y):
-        """Calculate mean squared error"""
+        """Calculate mean squared error (variance)"""
         if len(y) == 0:
             return 0
         return np.var(y)
 
     def _split(self, X, y, feature, threshold):
-        """Split dataset"""
+        """Split dataset based on feature and threshold"""
         left_mask = X[:, feature] <= threshold
         right_mask = ~left_mask
-        return X[left_mask], X[right_mask], y[left_mask], y[right_mask]
+        return (
+            X[left_mask],
+            X[right_mask],
+            y[left_mask],
+            y[right_mask],
+        )
 
     def _best_split(self, X, y):
-        """Find best split"""
+        """Find best split to minimize MSE"""
         best_mse = float("inf")
         best_feature = None
         best_threshold = None
@@ -272,7 +368,7 @@ class DecisionTreeRegressor(BaseRegressor):
         return best_feature, best_threshold
 
     def _build_tree(self, X, y, depth=0):
-        """Build regression tree"""
+        """Recursively build regression tree"""
         n_samples = X.shape[0]
 
         if (
@@ -285,7 +381,9 @@ class DecisionTreeRegressor(BaseRegressor):
         if best_feature is None:
             return Node(value=np.mean(y))
 
-        X_left, X_right, y_left, y_right = self._split(X, y, best_feature, best_threshold)
+        X_left, X_right, y_left, y_right = self._split(
+            X, y, best_feature, best_threshold
+        )
         left_subtree = self._build_tree(X_left, y_left, depth + 1)
         right_subtree = self._build_tree(X_right, y_right, depth + 1)
 
@@ -297,14 +395,29 @@ class DecisionTreeRegressor(BaseRegressor):
         )
 
     def fit(self, X, y):
-        """Fit regression tree"""
-        X, y = self._validate_input(X, y)
+        """
+        Fit regression tree
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data
+        y : array-like of shape (n_samples,)
+            Target values
+
+        Returns
+        -------
+        self : DecisionTreeRegressor
+            Fitted regressor
+        """
+        X = np.array(X)
+        y = np.array(y)
         self.tree_ = self._build_tree(X, y)
         self.is_fitted_ = True
         return self
 
     def _traverse_tree(self, x, node):
-        """Traverse tree"""
+        """Traverse tree to make prediction"""
         if node.is_leaf():
             return node.value
 
@@ -313,32 +426,64 @@ class DecisionTreeRegressor(BaseRegressor):
         return self._traverse_tree(x, node.right)
 
     def predict(self, X):
-        """Predict values"""
-        self._check_is_fitted()
-        X, _ = self._validate_input(X)
+        """
+        Predict continuous values
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Samples to predict
+
+        Returns
+        -------
+        y : array-like of shape (n_samples,)
+            Predicted values
+        """
+        if not hasattr(self, "is_fitted_") or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+
+        X = np.array(X)
         return np.array([self._traverse_tree(x, self.tree_) for x in X])
 
 
-class RandomForestClassifier(BaseClassifier):
+class RandomForestClassifier(BaseEstimator, ClassifierMixin):
     """
     Random Forest Classifier
+
+    An ensemble of decision trees trained on random subsets of the data
+    (bootstrap samples). Predictions are made by majority voting.
 
     Parameters
     ----------
     n_estimators : int, default=100
-        Number of trees
+        Number of trees in the forest
     max_depth : int, default=None
-        Maximum depth of trees
+        Maximum depth of each tree
     min_samples_split : int, default=2
-        Minimum samples to split
+        Minimum samples required to split a node
+    min_samples_leaf : int, default=1
+        Minimum samples required at a leaf
     max_features : str or int, default='sqrt'
-        Number of features to consider for splits
+        Number of features to consider for splits ('sqrt' or 'log2')
+    random_state : int, default=None
+        Random seed for reproducibility
+
+    Attributes
+    ----------
+    trees_ : list of DecisionTreeClassifier
+        Trained trees
+    classes_ : array-like
+        Unique class labels
 
     Example
     -------
     >>> from mayini.ml import RandomForestClassifier
-    >>> rf = RandomForestClassifier(n_estimators=100)
-    >>> rf.fit(X_train, y_train)
+    >>> import numpy as np
+    >>> X = np.array([[1, 2], [2, 3], [3, 4]])
+    >>> y = np.array([0, 1, 1])
+    >>> rf = RandomForestClassifier(n_estimators=10)
+    >>> rf.fit(X, y)
+    >>> rf.predict([[2, 3]])
     """
 
     def __init__(
@@ -346,13 +491,17 @@ class RandomForestClassifier(BaseClassifier):
         n_estimators=100,
         max_depth=None,
         min_samples_split=2,
+        min_samples_leaf=1,
         max_features="sqrt",
+        random_state=None,
     ):
         super().__init__()
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
         self.max_features = max_features
+        self.random_state = random_state
         self.trees_ = []
         self.classes_ = None
 
@@ -363,14 +512,34 @@ class RandomForestClassifier(BaseClassifier):
         return X[indices], y[indices]
 
     def fit(self, X, y):
-        """Fit random forest"""
-        X, y = self._validate_input(X, y)
+        """
+        Fit random forest classifier
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data
+        y : array-like of shape (n_samples,)
+            Target labels
+
+        Returns
+        -------
+        self : RandomForestClassifier
+            Fitted classifier
+        """
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+
+        X = np.array(X)
+        y = np.array(y)
         self.classes_ = np.unique(y)
         self.trees_ = []
 
         for _ in range(self.n_estimators):
             tree = DecisionTreeClassifier(
-                max_depth=self.max_depth, min_samples_split=self.min_samples_split
+                max_depth=self.max_depth,
+                min_samples_split=self.min_samples_split,
+                min_samples_leaf=self.min_samples_leaf,
             )
             X_sample, y_sample = self._bootstrap_sample(X, y)
             tree.fit(X_sample, y_sample)
@@ -380,11 +549,23 @@ class RandomForestClassifier(BaseClassifier):
         return self
 
     def predict(self, X):
-        """Predict using majority voting"""
-        self._check_is_fitted()
-        X, _ = self._validate_input(X)
+        """
+        Predict class labels using majority voting
 
-        # Get predictions from all trees
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Samples to predict
+
+        Returns
+        -------
+        y : array-like of shape (n_samples,)
+            Predicted class labels
+        """
+        if not hasattr(self, "is_fitted_") or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+
+        X = np.array(X)
         predictions = np.array([tree.predict(X) for tree in self.trees_])
 
         # Majority vote
@@ -395,3 +576,122 @@ class RandomForestClassifier(BaseClassifier):
             final_predictions.append(unique[counts.argmax()])
 
         return np.array(final_predictions)
+
+
+class RandomForest(RandomForestClassifier):
+    """Alias for RandomForestClassifier for backward compatibility"""
+
+    pass
+
+
+class RandomForestRegressor(BaseEstimator, RegressorMixin):
+    """
+    Random Forest Regressor
+
+    An ensemble of regression trees trained on random subsets of the data.
+    Predictions are made by averaging the predictions of all trees.
+
+    Parameters
+    ----------
+    n_estimators : int, default=100
+        Number of trees in the forest
+    max_depth : int, default=None
+        Maximum depth of each tree
+    min_samples_split : int, default=2
+        Minimum samples required to split
+    min_samples_leaf : int, default=1
+        Minimum samples required at a leaf
+    random_state : int, default=None
+        Random seed
+
+    Example
+    -------
+    >>> from mayini.ml import RandomForestRegressor
+    >>> import numpy as np
+    >>> X = np.array([[1, 2], [2, 3], [3, 4]])
+    >>> y = np.array([1.5, 2.5, 3.5])
+    >>> rf = RandomForestRegressor(n_estimators=10)
+    >>> rf.fit(X, y)
+    >>> rf.predict([[2, 3]])
+    """
+
+    def __init__(
+        self,
+        n_estimators=100,
+        max_depth=None,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        random_state=None,
+    ):
+        super().__init__()
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.random_state = random_state
+        self.trees_ = []
+
+    def _bootstrap_sample(self, X, y):
+        """Create bootstrap sample"""
+        n_samples = X.shape[0]
+        indices = np.random.choice(n_samples, n_samples, replace=True)
+        return X[indices], y[indices]
+
+    def fit(self, X, y):
+        """
+        Fit random forest regressor
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data
+        y : array-like of shape (n_samples,)
+            Target values
+
+        Returns
+        -------
+        self : RandomForestRegressor
+            Fitted regressor
+        """
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+
+        X = np.array(X)
+        y = np.array(y)
+        self.trees_ = []
+
+        for _ in range(self.n_estimators):
+            tree = DecisionTreeRegressor(
+                max_depth=self.max_depth,
+                min_samples_split=self.min_samples_split,
+                min_samples_leaf=self.min_samples_leaf,
+            )
+            X_sample, y_sample = self._bootstrap_sample(X, y)
+            tree.fit(X_sample, y_sample)
+            self.trees_.append(tree)
+
+        self.is_fitted_ = True
+        return self
+
+    def predict(self, X):
+        """
+        Predict values using average of all trees
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Samples to predict
+
+        Returns
+        -------
+        y : array-like of shape (n_samples,)
+            Predicted values
+        """
+        if not hasattr(self, "is_fitted_") or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+
+        X = np.array(X)
+        predictions = np.array([tree.predict(X) for tree in self.trees_])
+
+        # Average predictions
+        return np.mean(predictions, axis=0)

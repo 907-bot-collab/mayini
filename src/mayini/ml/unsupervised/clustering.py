@@ -165,7 +165,7 @@ class DBSCAN(BaseEstimator, ClusterMixin):
         return self.labels_
 
 
-class AgglomerativeClustering(BaseCluster):
+class AgglomerativeClustering(BaseEstimator, ClusterMixin):
     """
     Agglomerative (Hierarchical) Clustering
 

@@ -1,8 +1,8 @@
 import numpy as np
-from ..base import BaseCluster
+from ..base import BaseEstimator, ClusterMixin
 
 
-class KMeans(BaseCluster):
+class KMeans(BaseEstimator, ClusterMixin):
     """
     K-Means Clustering
 
@@ -82,7 +82,7 @@ class KMeans(BaseCluster):
         return self.labels_
 
 
-class DBSCAN(BaseCluster):
+class DBSCAN(BaseEstimator, ClusterMixin):
     """
     Density-Based Spatial Clustering of Applications with Noise
 

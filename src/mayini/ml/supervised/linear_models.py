@@ -2,121 +2,58 @@ import numpy as np
 from scipy import linalg
 from ..base import BaseRegressor, BaseClassifier, BaseEstimator, ClassifierMixin, RegressorMixin
 
-
-class LogisticRegression(BaseEstimator, ClassifierMixin):
+class LinearRegression(BaseEstimator, RegressorMixin):
     """
-    Logistic Regression Classifier
+    Ordinary Least Squares Linear Regression
     
-    Binary classification using logistic (sigmoid) function with
-    gradient descent optimization.
+    Simple linear regression using the normal equation or gradient descent.
     
     Parameters
     ----------
-    learning_rate : float, default=0.01
-        Learning rate for gradient descent
-    max_iter : int, default=1000
-        Maximum number of iterations
-    random_state : int, default=None
-        Random seed
+    fit_intercept : bool, default=True
+        Whether to calculate the intercept
     
     Example
     -------
-    >>> from mayini.ml import LogisticRegression
-    >>> lr = LogisticRegression(max_iter=100)
+    >>> from mayini.ml import LinearRegression
+    >>> lr = LinearRegression()
     >>> lr.fit(X, y)
     >>> lr.predict(X)
     """
     
-    def __init__(self, learning_rate=0.01, max_iter=1000, random_state=None):
+    def __init__(self, fit_intercept=True):
         super().__init__()
-        self.learning_rate = learning_rate
-        self.max_iter = max_iter
-        self.random_state = random_state
-        self.weights = None
-        self.bias = None
-        self.classes_ = None
-    
-    def _validate_input(self, X, y=None):
-        """Validate and convert input data to numpy arrays"""
-        X = np.array(X)
-        
-        if y is not None:
-            y = np.array(y)
-            if X.shape[0] != y.shape[0]:
-                raise ValueError(
-                    f"X and y must have same number of samples. "
-                    f"Got X: {X.shape[0]}, y: {y.shape[0]}"
-                )
-            return X, y
-        
-        return X, None
-    
-    def _sigmoid(self, z):
-        """Sigmoid activation function"""
-        return 1 / (1 + np.exp(-z))
+        self.fit_intercept = fit_intercept
+        self.coef_ = None
+        self.intercept_ = None
     
     def fit(self, X, y):
-        """Fit logistic regression model"""
-        X, y = self._validate_input(X, y)
+        """Fit linear regression model"""
+        X = np.array(X)
+        y = np.array(y)
         
-        if self.random_state is not None:
-            np.random.seed(self.random_state)
+        if self.fit_intercept:
+            X = np.c_[np.ones(X.shape[0]), X]
         
-        self.classes_ = np.unique(y)
-        if len(self.classes_) != 2:
-            raise ValueError("LogisticRegression only supports binary classification")
+        # Normal equation: (X^T X)^-1 X^T y
+        self.coef_ = np.linalg.lstsq(X, y, rcond=None)[0]
         
-        n_samples, n_features = X.shape
-        self.weights = np.zeros(n_features)
-        self.bias = 0
-        
-        # Convert labels to binary {0, 1}
-        y_binary = np.where(y == self.classes_[0], 0, 1)
-        
-        # Gradient descent
-        for iteration in range(self.max_iter):
-            # Linear model
-            z = np.dot(X, self.weights) + self.bias
-            
-            # Predictions (sigmoid)
-            y_pred = self._sigmoid(z)
-            
-            # Gradients
-            dw = (1 / n_samples) * np.dot(X.T, (y_pred - y_binary))
-            db = (1 / n_samples) * np.sum(y_pred - y_binary)
-            
-            # Update weights
-            self.weights -= self.learning_rate * dw
-            self.bias -= self.learning_rate * db
+        if self.fit_intercept:
+            self.intercept_ = self.coef_[0]
+            self.coef_ = self.coef_[1:]
+        else:
+            self.intercept_ = 0
         
         self.is_fitted_ = True
         return self
     
     def predict(self, X):
-        """Predict class labels"""
+        """Predict using the linear model"""
         if not hasattr(self, 'is_fitted_') or not self.is_fitted_:
             raise ValueError("Model must be fitted before prediction")
         
-        X, _ = self._validate_input(X)
-        
-        z = np.dot(X, self.weights) + self.bias
-        y_pred_prob = self._sigmoid(z)
-        
-        return np.where(y_pred_prob >= 0.5, self.classes_[1], self.classes_[0])
-    
-    def predict_proba(self, X):
-        """Predict class probabilities"""
-        if not hasattr(self, 'is_fitted_') or not self.is_fitted_:
-            raise ValueError("Model must be fitted before prediction")
-        
-        X, _ = self._validate_input(X)
-        
-        z = np.dot(X, self.weights) + self.bias
-        y_pred_prob = self._sigmoid(z)
-        
-        return np.column_stack([1 - y_pred_prob, y_pred_prob])
-
-
+        X = np.array(X)
+        return np.dot(X, self.coef_) + self.intercept_
 
 class Ridge(BaseRegressor):
     """

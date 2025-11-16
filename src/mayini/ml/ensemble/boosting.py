@@ -124,6 +124,247 @@ class AdaBoost(BaseEstimator, ClassifierMixin):
         
         return np.where(final_predictions >= 0, self.classes_[1], self.classes_[0])
 
+class AdaBoostRegressor:
+    """
+    Adaptive Boosting (AdaBoost) Regressor
+
+    Combines multiple weak regressors sequentially to create a strong regressor.
+    Each weak regressor is trained on a weighted version of the dataset.
+    The weights are adjusted based on the errors from previous regressors.
+
+    Parameters:
+    -----------
+    n_estimators : int, default=50
+        Number of weak learners (base regressors) to use
+
+    learning_rate : float, default=0.1
+        Shrinkage parameter - controls contribution of each regressor
+        Typical range: 0.01 to 1.0
+
+    random_state : int or None, default=None
+        Random seed for reproducibility
+
+    loss : str, default='linear'
+        Loss function to use
+        Options: 'linear', 'square', 'exponential'
+
+    Attributes:
+    -----------
+    models : list
+        List of trained weak regressors
+
+    alphas : array
+        Weights for each regressor
+
+    errors : array
+        Training errors at each iteration
+
+    Example:
+    --------
+    >>> from mayini.ml import AdaBoostRegressor
+    >>> X = np.random.randn(100, 5)
+    >>> y = np.random.randn(100)
+    >>> 
+    >>> ada = AdaBoostRegressor(n_estimators=50, learning_rate=0.1)
+    >>> ada.fit(X, y)
+    >>> y_pred = ada.predict(X)
+    """
+
+    def __init__(self, n_estimators=50, learning_rate=0.1, random_state=None, loss='linear'):
+        """Initialize AdaBoostRegressor"""
+        self.n_estimators = n_estimators
+        self.learning_rate = learning_rate
+        self.random_state = random_state
+        self.loss = loss
+
+        self.models = []
+        self.alphas = np.array([])
+        self.errors = np.array([])
+        self.train_errors = []
+
+        if random_state is not None:
+            np.random.seed(random_state)
+
+    def fit(self, X, y):
+        """
+        Train the AdaBoost Regressor
+
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Training features
+
+        y : array-like of shape (n_samples,)
+            Training targets
+
+        Returns:
+        --------
+        self : AdaBoostRegressor
+            Fitted regressor
+        """
+        X = np.asarray(X, dtype=np.float64)
+        y = np.asarray(y, dtype=np.float64)
+
+        n_samples = X.shape[0]
+
+        # Initialize sample weights uniformly
+        sample_weights = np.ones(n_samples) / n_samples
+
+        self.models = []
+        self.alphas = []
+        self.train_errors = []
+
+        for iteration in range(self.n_estimators):
+            # Fit weak learner on weighted samples
+            model = self._fit_weak_learner(X, y, sample_weights)
+            self.models.append(model)
+
+            # Make predictions
+            y_pred = self._predict_weak_learner(model, X)
+
+            # Calculate error
+            error = np.mean(sample_weights * np.abs(y - y_pred))
+            self.train_errors.append(error)
+
+            # Check for perfect prediction
+            if error < 1e-10:
+                alpha = 1.0
+            elif error >= 0.5:
+                # If error too high, stop boosting
+                break
+            else:
+                # Calculate alpha based on error
+                alpha = self.learning_rate * (np.log(1 - error) - np.log(error)) / 2
+
+            self.alphas.append(alpha)
+
+            # Update sample weights
+            residuals = np.abs(y - y_pred)
+            sample_weights *= np.exp(-alpha * residuals)
+            sample_weights /= np.sum(sample_weights)
+
+        self.alphas = np.array(self.alphas)
+        self.errors = np.array(self.train_errors)
+
+        return self
+
+    def _fit_weak_learner(self, X, y, sample_weights):
+        """
+        Fit a weak learner (linear regression) with sample weights
+
+        Uses weighted least squares regression
+        """
+        # Weighted least squares
+        sqrt_weights = np.sqrt(sample_weights)
+        X_weighted = X * sqrt_weights[:, np.newaxis]
+        y_weighted = y * sqrt_weights
+
+        # Simple linear regression using numpy
+        # X_weighted.T @ X_weighted @ coef = X_weighted.T @ y_weighted
+        try:
+            coef = np.linalg.lstsq(X_weighted, y_weighted, rcond=None)[0]
+            intercept = np.mean(y_weighted - X_weighted @ coef)
+        except:
+            # Fallback to simple mean
+            coef = np.zeros(X.shape[1])
+            intercept = np.mean(y)
+
+        return {'coef': coef, 'intercept': intercept}
+
+    def _predict_weak_learner(self, model, X):
+        """Make predictions with a weak learner"""
+        return X @ model['coef'] + model['intercept']
+
+    def predict(self, X):
+        """
+        Predict target values for X
+
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Samples to predict
+
+        Returns:
+        --------
+        y_pred : array of shape (n_samples,)
+            Predicted values
+        """
+        X = np.asarray(X, dtype=np.float64)
+
+        if len(self.models) == 0:
+            raise ValueError("Model not fitted yet")
+
+        n_samples = X.shape[0]
+        y_pred = np.zeros(n_samples)
+
+        for alpha, model in zip(self.alphas, self.models):
+            y_pred += alpha * self._predict_weak_learner(model, X)
+
+        return y_pred
+
+    def score(self, X, y):
+        """
+        Calculate R² score (coefficient of determination)
+
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Test features
+
+        y : array-like of shape (n_samples,)
+            Test targets
+
+        Returns:
+        --------
+        score : float
+            R² score between 0 and 1 (higher is better)
+        """
+        y_pred = self.predict(X)
+
+        ss_res = np.sum((y - y_pred) ** 2)
+        ss_tot = np.sum((y - np.mean(y)) ** 2)
+
+        r2_score = 1 - (ss_res / ss_tot)
+        return r2_score
+
+    def get_feature_importance(self):
+        """
+        Get feature importance based on coefficients across all models
+
+        Returns:
+        --------
+        importance : array of shape (n_features,)
+            Importance score for each feature
+        """
+        if len(self.models) == 0:
+            raise ValueError("Model not fitted yet")
+
+        n_features = self.models[0]['coef'].shape[0]
+        importance = np.zeros(n_features)
+
+        for alpha, model in zip(self.alphas, self.models):
+            importance += alpha * np.abs(model['coef'])
+
+        importance /= np.sum(importance)
+        return importance
+
+    def get_params(self):
+        """Get model parameters"""
+        return {
+            'n_estimators': self.n_estimators,
+            'learning_rate': self.learning_rate,
+            'random_state': self.random_state,
+            'loss': self.loss,
+            'n_models_': len(self.models),
+        }
+
+    def set_params(self, **params):
+        """Set model parameters"""
+        for key, value in params.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        return self
+
 
 class AdaBoostClassifier(BaseEstimator, ClassifierMixin):
     """

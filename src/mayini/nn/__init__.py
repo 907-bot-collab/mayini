@@ -78,24 +78,3 @@ __all__ = []
 # BLACK-FORMATTED VERSION
 # ============================================================================
 
-"""
-Mayini - Machine Learning Library
-
-A comprehensive machine learning library built with NumPy and SciPy
-"""
-
-__version__ = "0.2.3"
-
-# Import main modules
-from . import ml
-from . import neat
-from . import preprocessing
-
-__all__ = [
-    "ml",
-    "neat", 
-    "preprocessing",
-]
-
-
-__all__ = []

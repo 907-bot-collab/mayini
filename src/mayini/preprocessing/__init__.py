@@ -5,12 +5,18 @@ from .numerical.imputers import SimpleImputer, KNNImputer
 from .numerical.normalizers import Normalizer, PowerTransformer
 from .feature_engineering.polynomial import PolynomialFeatures
 from .feature_engineering.interactions import FeatureInteractions
-from .text.vectorizers import TfidfVectorizer, CountVectorizer
 from .outlier_detection import IsolationForest, LocalOutlierFactor
 from .pipeline import Pipeline
 from .selection.variance import VarianceThreshold
 from .selection.correlation import CorrelationSelector
 from .autopreprocessor import AutoPreprocessor
+
+
+# ============================================================================
+# SYSTEM B: MULTIMODAL PREPROCESSING (Text, Image, Audio, Video)
+# ============================================================================
+
+# TEXT PREPROCESSING
 from .text.tokenizer import (
     Tokenizer,
     CharacterTokenizer,
@@ -41,11 +47,7 @@ from .text.embeddings import (
     GloVeEmbeddings
 )
 
-
-# ============================================================================
-# IMAGE PREPROCESSING IMPORTS
-# ============================================================================
-
+# IMAGE PREPROCESSING
 from .image.loader import (
     ImageLoader,
     ImageWriter,
@@ -75,11 +77,7 @@ from .image.features import (
     ShapeFeatures
 )
 
-
-# ============================================================================
-# AUDIO PREPROCESSING IMPORTS
-# ============================================================================
-
+# AUDIO PREPROCESSING
 from .audio.loader import (
     AudioLoader,
     AudioWriter,
@@ -104,11 +102,7 @@ from .audio.analysis import (
     FeatureComparison
 )
 
-
-# ============================================================================
-# VIDEO PREPROCESSING IMPORTS
-# ============================================================================
-
+# VIDEO PREPROCESSING
 from .video.loader import (
     VideoLoader,
     VideoWriter,
@@ -131,117 +125,94 @@ from .video.features import (
     VideoAugmentation as VideoAug
 )
 
-
-# ============================================================================
 # AUTOMATED PREPROCESSOR & WIDGET
-# ============================================================================
-
 from .preprocess import AutomatedPreprocessor
-
 from .widget import PreprocessorWidget, launch_widget
 
 
 # ============================================================================
-# PUBLIC API - ALL EXPORTED CLASSES
+# SINGLE __all__ EXPORT - COMBINES BOTH SYSTEMS (NO DUPLICATES!)
 # ============================================================================
 
 __all__ = [
-    # ===== TEXT PREPROCESSING =====
-    'Tokenizer',
-    'CharacterTokenizer',
-    'WordPieceTokenizer',
-    'NGramTokenizer',
-    'TextCleaner',
-    'TextNormalizer',
-    'PorterStemmer',
-    'SimpleStemmer',
-    'LancasterStemmer',
-    'TFIDFVectorizer',
-    'CountVectorizer',
-    'BinaryVectorizer',
-    'Word2Vec',
-    'FastTextEmbeddings',
-    'GloVeEmbeddings',
-    
-    # ===== IMAGE PREPROCESSING =====
-    'ImageLoader',
-    'ImageWriter',
-    'ImageGenerator',
-    'ImageTransforms',
-    'Normalize',
-    'ImageAugmentation',
-    'ConvolutionFilters',
-    'EdgeDetection',
-    'MorphologicalOperations',
-    'ColorConversion',
-    'HistogramFeatures',
-    'TextureFeatures',
-    'HOGFeatures',
-    'ShapeFeatures',
-    
-    # ===== AUDIO PREPROCESSING =====
-    'AudioLoader',
-    'AudioWriter',
-    'AudioGenerator',
-    'Spectrogram',
-    'MFCCExtractor',
-    'AudioFeatures',
-    'AudioStatistics',
-    'AudioEffects',
-    'AudioAug',
-    'AudioAnalysis',
-    'AudioQuality',
-    'FeatureComparison',
-    
-    # ===== VIDEO PREPROCESSING =====
-    'VideoLoader',
-    'VideoWriter',
-    'VideoProcessor',
-    'OpticalFlow',
-    'MotionDetection',
-    'SceneDetection',
-    'ShotBoundaryDetection',
-    'TemporalFeatures',
-    'VideoStatistics',
-    'VideoAug',
-    
-    # ===== AUTOMATED PREPROCESSOR & WIDGET =====
-    'AutomatedPreprocessor',
-    'PreprocessorWidget',
-    'launch_widget'
-]
-
-__all__ = [
-    # Categorical encoding
+    # ===== TRADITIONAL PREPROCESSING (System A) =====
     "LabelEncoder",
     "OneHotEncoder",
     "OrdinalEncoder",
     "TargetEncoder",
     "FrequencyEncoder",
-    # Numerical scaling
     "StandardScaler",
     "MinMaxScaler",
     "RobustScaler",
-    # Imputation
     "SimpleImputer",
     "KNNImputer",
-    # Normalization
     "Normalizer",
     "PowerTransformer",
-    # Feature engineering
     "PolynomialFeatures",
     "FeatureInteractions",
-    # Text processing
-    "TfidfVectorizer",
-    "CountVectorizer",
-    # Outlier detection
     "IsolationForest",
     "LocalOutlierFactor",
-    # Pipeline
     "Pipeline",
-    # Feature selection
     "VarianceThreshold",
     "CorrelationSelector",
-    # Auto preprocessing
     "AutoPreprocessor",
+    # Text
+    "Tokenizer",
+    "CharacterTokenizer",
+    "WordPieceTokenizer",
+    "NGramTokenizer",
+    "TextCleaner",
+    "TextNormalizer",
+    "PorterStemmer",
+    "SimpleStemmer",
+    "LancasterStemmer",
+    "TFIDFVectorizer",
+    "CountVectorizer",
+    "BinaryVectorizer",
+    "Word2Vec",
+    "FastTextEmbeddings",
+    "GloVeEmbeddings",
+    # Image
+    "ImageLoader",
+    "ImageWriter",
+    "ImageGenerator",
+    "ImageTransforms",
+    "Normalize",
+    "ImageAugmentation",
+    "ConvolutionFilters",
+    "EdgeDetection",
+    "MorphologicalOperations",
+    "ColorConversion",
+    "HistogramFeatures",
+    "TextureFeatures",
+    "HOGFeatures",
+    "ShapeFeatures",
+    # Audio
+    "AudioLoader",
+    "AudioWriter",
+    "AudioGenerator",
+    "Spectrogram",
+    "MFCCExtractor",
+    "AudioFeatures",
+    "AudioStatistics",
+    "AudioEffects",
+    "AudioAug",
+    "AudioAnalysis",
+    "AudioQuality",
+    "FeatureComparison",
+    # Video
+    "VideoLoader",
+    "VideoWriter",
+    "VideoProcessor",
+    "OpticalFlow",
+    "MotionDetection",
+    "SceneDetection",
+    "ShotBoundaryDetection",
+    "TemporalFeatures",
+    "VideoStatistics",
+    "VideoAug",
+    # Automated preprocessor
+    "AutomatedPreprocessor",
+    "PreprocessorWidget",
+    "launch_widget"
 ]

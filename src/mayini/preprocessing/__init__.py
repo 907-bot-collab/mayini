@@ -41,7 +41,7 @@ from .text.vectorizer import (
     BinaryVectorizer
 )
 
-from .text.embeddings import (
+from .text.embedding import (
     Word2Vec,
     FastTextEmbeddings,
     GloVeEmbeddings

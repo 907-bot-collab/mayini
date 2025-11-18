@@ -20,8 +20,7 @@ from .autopreprocessor import AutoPreprocessor
 from .text.tokenizer import (
     Tokenizer,
     CharacterTokenizer,
-    WordPieceTokenizer,
-    NGramTokenizer
+    WordPieceTokenizer
 )
 
 from .text.cleaner import (

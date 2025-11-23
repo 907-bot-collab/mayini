@@ -55,85 +55,181 @@ class LinearRegression(BaseEstimator, RegressorMixin):
         X = np.array(X)
         return np.dot(X, self.coef_) + self.intercept_
 
-class Ridge(BaseRegressor):
+class Ridge(BaseEstimator, RegressorMixin):
     """
-    Ridge Regression (L2 regularization)
-
+    Ridge Regression (L2 Regularization)
+    
+    Linear regression with L2 penalty on coefficients to prevent overfitting.
+    
     Parameters
     ----------
     alpha : float, default=1.0
-        Regularization strength
+        Regularization strength. Higher values = more regularization
     fit_intercept : bool, default=True
         Whether to calculate the intercept
-
+    
+    Attributes
+    ----------
+    coef_ : array-like
+        Learned coefficients
+    intercept_ : float
+        Learned intercept
+    
     Example
     -------
     >>> from mayini.ml import Ridge
+    >>> import numpy as np
+    >>> X = np.array([[1, 2], [2, 3], [3, 4], [4, 5]])
+    >>> y = np.array([2.0, 4.0, 6.0, 8.0])
     >>> ridge = Ridge(alpha=1.0)
-    >>> ridge.fit(X_train, y_train)
+    >>> ridge.fit(X, y)
+    >>> ridge.predict([[2.5, 3.5]])
+    array([5.])
     """
-
+    
     def __init__(self, alpha=1.0, fit_intercept=True):
         super().__init__()
         self.alpha = alpha
         self.fit_intercept = fit_intercept
         self.coef_ = None
         self.intercept_ = None
-
+    
     def fit(self, X, y):
-        """Fit Ridge regression model"""
-        X, y = self._validate_input(X, y)
-
+        """
+        Fit Ridge regression model
+        
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data
+        y : array-like of shape (n_samples,)
+            Target values
+        
+        Returns
+        -------
+        self : Ridge
+            Fitted regressor
+        """
+        # Convert to numpy arrays
+        X = np.asarray(X, dtype=np.float64)
+        y = np.asarray(y, dtype=np.float64)
+        
+        # Validate dimensions
+        if X.shape[0] != y.shape[0]:
+            raise ValueError(
+                f"X and y must have same number of samples. "
+                f"Got X: {X.shape[0]}, y: {y.shape[0]}"
+            )
+        
+        n_samples, n_features = X.shape
+        
         if self.fit_intercept:
-            X_mean = np.mean(X, axis=0)
-            y_mean = np.mean(y)
-            X = X - X_mean
-            y = y - y_mean
-            self.X_mean_ = X_mean
-            self.y_mean_ = y_mean
-
-        # Solve: (X^T X + alpha * I) beta = X^T y
-        n_features = X.shape[1]
-        A = X.T @ X + self.alpha * np.eye(n_features)
-        b = X.T @ y
-        self.coef_ = linalg.solve(A, b, assume_a="pos")
-
-        if self.fit_intercept:
-            self.intercept_ = self.y_mean_ - self.X_mean_ @ self.coef_
+            # Add intercept column (ones)
+            X_with_intercept = np.c_[np.ones(n_samples), X]
+            
+            # Ridge solution: (X^T X + alpha*I)^-1 X^T y
+            # For intercept, we don't regularize the first coefficient
+            I = np.eye(n_features + 1)
+            I[0, 0] = 0  # Don't regularize intercept
+            
+            A = np.dot(X_with_intercept.T, X_with_intercept) + self.alpha * I
+            b = np.dot(X_with_intercept.T, y)
+            
+            coefficients = np.linalg.solve(A, b)
+            
+            self.intercept_ = coefficients[0]
+            self.coef_ = coefficients[1:]
         else:
+            # Ridge solution without intercept
+            I = np.eye(n_features)
+            A = np.dot(X.T, X) + self.alpha * I
+            b = np.dot(X.T, y)
+            
+            self.coef_ = np.linalg.solve(A, b)
             self.intercept_ = 0.0
-
+        
         self.is_fitted_ = True
         return self
-
+    
     def predict(self, X):
-        """Predict using Ridge model"""
-        self._check_is_fitted()
-        X, _ = self._validate_input(X)
-        return X @ self.coef_ + self.intercept_
+        """
+        Predict using Ridge regression model
+        
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Samples to predict
+        
+        Returns
+        -------
+        y_pred : array-like of shape (n_samples,)
+            Predicted values
+        """
+        # Check if model is fitted
+        if not hasattr(self, 'is_fitted_') or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+        
+        # Convert to numpy array
+        X = np.asarray(X, dtype=np.float64)
+        
+        # Make predictions
+        return np.dot(X, self.coef_) + self.intercept_
+    
+    def score(self, X, y):
+        """
+        Return the R^2 score (coefficient of determination)
+        
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Test samples
+        y : array-like of shape (n_samples,)
+            True values
+        
+        Returns
+        -------
+        score : float
+            R^2 score
+        """
+        y = np.asarray(y, dtype=np.float64)
+        y_pred = self.predict(X)
+        
+        # R^2 = 1 - (SS_res / SS_tot)
+        ss_res = np.sum((y - y_pred) ** 2)
+        ss_tot = np.sum((y - np.mean(y)) ** 2)
+        
+        return 1 - (ss_res / ss_tot)
 
 
-class Lasso(BaseRegressor):
+class Lasso(BaseEstimator, RegressorMixin):
     """
-    Lasso Regression (L1 regularization)
-    Uses coordinate descent algorithm
-
+    Lasso Regression (L1 Regularization)
+    
+    Linear regression with L1 penalty using coordinate descent.
+    
     Parameters
     ----------
     alpha : float, default=1.0
         Regularization strength
     max_iter : int, default=1000
-        Maximum number of iterations
+        Maximum iterations for coordinate descent
     tol : float, default=1e-4
-        Tolerance for optimization
-
+        Tolerance for convergence
+    
+    Attributes
+    ----------
+    coef_ : array-like
+        Learned coefficients
+    intercept_ : float
+        Learned intercept
+    
     Example
     -------
     >>> from mayini.ml import Lasso
     >>> lasso = Lasso(alpha=0.1)
-    >>> lasso.fit(X_train, y_train)
+    >>> lasso.fit(X, y)
     """
-
+    
     def __init__(self, alpha=1.0, max_iter=1000, tol=1e-4):
         super().__init__()
         self.alpha = alpha
@@ -141,54 +237,82 @@ class Lasso(BaseRegressor):
         self.tol = tol
         self.coef_ = None
         self.intercept_ = None
-
-    def _soft_threshold(self, x, lambda_):
-        """Soft thresholding operator"""
-        return np.sign(x) * np.maximum(np.abs(x) - lambda_, 0)
-
+    
     def fit(self, X, y):
-        """Fit Lasso model using coordinate descent"""
-        X, y = self._validate_input(X, y)
-
+        """Fit Lasso regression using coordinate descent"""
+        # Convert to numpy arrays
+        X = np.asarray(X, dtype=np.float64)
+        y = np.asarray(y, dtype=np.float64)
+        
+        # Validate dimensions
+        if X.shape[0] != y.shape[0]:
+            raise ValueError(
+                f"X and y must have same number of samples. "
+                f"Got X: {X.shape[0]}, y: {y.shape[0]}"
+            )
+        
         n_samples, n_features = X.shape
-
-        # Center data
-        X_mean = np.mean(X, axis=0)
-        y_mean = np.mean(y)
-        X = X - X_mean
-        y = y - y_mean
-
+        
         # Initialize coefficients
         self.coef_ = np.zeros(n_features)
-
+        self.intercept_ = np.mean(y)
+        
         # Coordinate descent
         for iteration in range(self.max_iter):
             coef_old = self.coef_.copy()
-
+            
             for j in range(n_features):
-                # Compute residual without j-th feature
-                residual = y - X @ self.coef_ + X[:, j] * self.coef_[j]
-
-                # Update j-th coefficient
-                rho_j = X[:, j] @ residual
-                self.coef_[j] = self._soft_threshold(
-                    rho_j / n_samples, self.alpha
-                ) / (np.sum(X[:, j] ** 2) / n_samples)
-
+                # Compute residual without feature j
+                residual = y - self.intercept_ - np.dot(X, self.coef_)
+                residual += self.coef_[j] * X[:, j]
+                
+                # Update coefficient j using soft thresholding
+                rho = np.dot(X[:, j], residual)
+                z = np.sum(X[:, j] ** 2)
+                
+                if z < 1e-10:
+                    self.coef_[j] = 0
+                else:
+                    self.coef_[j] = self._soft_threshold(rho, self.alpha * n_samples) / z
+            
+            # Update intercept
+            self.intercept_ = np.mean(y - np.dot(X, self.coef_))
+            
             # Check convergence
-            if np.max(np.abs(self.coef_ - coef_old)) < self.tol:
+            if np.sum(np.abs(self.coef_ - coef_old)) < self.tol:
                 break
-
-        self.intercept_ = y_mean - X_mean @ self.coef_
-        self.X_mean_ = X_mean
+        
         self.is_fitted_ = True
         return self
-
+    
     def predict(self, X):
         """Predict using Lasso model"""
-        self._check_is_fitted()
-        X, _ = self._validate_input(X)
-        return X @ self.coef_ + self.intercept_
+        if not hasattr(self, 'is_fitted_') or not self.is_fitted_:
+            raise ValueError("Model must be fitted before prediction")
+        
+        X = np.asarray(X, dtype=np.float64)
+        return np.dot(X, self.coef_) + self.intercept_
+    
+    def score(self, X, y):
+        """Return R^2 score"""
+        y = np.asarray(y, dtype=np.float64)
+        y_pred = self.predict(X)
+        
+        ss_res = np.sum((y - y_pred) ** 2)
+        ss_tot = np.sum((y - np.mean(y)) ** 2)
+        
+        return 1 - (ss_res / ss_tot)
+    
+    @staticmethod
+    def _soft_threshold(x, lambda_):
+        """Soft thresholding operator for Lasso"""
+        if x > lambda_:
+            return x - lambda_
+        elif x < -lambda_:
+            return x + lambda_
+        else:
+            return 0.0
+
 
 class ElasticNet(BaseEstimator, RegressorMixin):
     """

@@ -6,20 +6,53 @@ import numpy as np
 import pytest
 
 
-def test_kmeans():
-    """Test KMeans"""
-    from mayini.ml.unsupervised.clustering import KMeans
-    
-    X = np.random.randn(100, 5)
-    
-    model = KMeans(n_clusters=3, max_iter=100)
-    model.fit(X)
-    labels = model.predict(X)
-    
-    assert labels.shape == (100,)
-    assert len(np.unique(labels)) <= 3
-    print("✅ KMeans passed")
+import pytest
+import numpy as np
+from mayini.clustering import KMeans
 
+
+class TestKMeans:
+    """Test cases for KMeans clustering"""
+    
+    def test_kmeans_init(self):
+        """Test KMeans initialization"""
+        kmeans = KMeans(n_clusters=3)
+        assert kmeans.n_clusters == 3
+        assert kmeans.max_iter == 100
+    
+    def test_kmeans_fit(self, blob_data):
+        """Test KMeans fit method"""
+        X, _ = blob_data
+        kmeans = KMeans(n_clusters=3, random_state=42)
+        kmeans.fit(X)
+        
+        assert hasattr(kmeans, 'cluster_centers_')
+        assert hasattr(kmeans, 'labels_')
+        assert kmeans.cluster_centers_.shape == (3, 2)
+        assert len(kmeans.labels_) == len(X)
+    
+    def test_kmeans_fit_predict(self, blob_data):
+        """Test KMeans fit_predict method"""
+        X, _ = blob_data
+        kmeans = KMeans(n_clusters=3, random_state=42)
+        labels = kmeans.fit_predict(X)
+        
+        assert len(labels) == len(X)
+        assert len(np.unique(labels)) == 3
+        assert all(label in [0, 1, 2] for label in labels)
+    
+    def test_kmeans_predict(self, blob_data):
+        """Test KMeans predict method"""
+        X, _ = blob_data
+        kmeans = KMeans(n_clusters=3, random_state=42)
+        kmeans.fit(X)
+        
+        # Test prediction on new data
+        X_new = X[:10]
+        predictions = kmeans.predict(X_new)
+        
+        assert len(predictions) == 10
+        assert all(pred in [0, 1, 2] for pred in predictions)
 
 def test_dbscan():
     """Test DBSCAN"""

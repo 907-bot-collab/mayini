@@ -1,5 +1,5 @@
 # Create the main conftest.py file with fixtures and common utilities
-conftest_content = '''"""
+conftest_content ='''"""
 Pytest configuration and common fixtures for mayini framework tests.
 """
 import pytest
@@ -10,107 +10,98 @@ import os
 # Add src to path for testing
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-# Import mayini components (with error handling for missing modules)
-try:
-    import mayini as mn
-except ImportError:
-    mn = None
 
-try:
-    from mayini.nn import Sequential, Linear, ReLU, Conv2D, MaxPool2D, Flatten
-except ImportError:
-    Sequential = Linear = ReLU = Conv2D = MaxPool2D = Flatten = None
-
-try:
-    from mayini.optim import SGD, Adam
-except ImportError:
-    SGD = Adam = None
-    
 @pytest.fixture
 def sample_tensor_2d():
-    """Create a sample 2D tensor for testing."""
-    return mn.Tensor([[1.0, 2.0], [3.0, 4.0]], requires_grad=True)
+    """Create a sample 2D numpy array for testing."""
+    return np.array([[1.0, 2.0], [3.0, 4.0]])
+
 
 @pytest.fixture
 def sample_tensor_1d():
-    """Create a sample 1D tensor for testing."""
-    return mn.Tensor([1.0, 2.0, 3.0, 4.0], requires_grad=True)
+    """Create a sample 1D numpy array for testing."""
+    return np.array([1.0, 2.0, 3.0, 4.0])
+
 
 @pytest.fixture
 def sample_tensor_scalar():
-    """Create a sample scalar tensor for testing."""
-    return mn.Tensor(5.0, requires_grad=True)
+    """Create a sample scalar for testing."""
+    return 5.0
+
 
 @pytest.fixture
 def sample_data_small():
     """Create small sample data for testing."""
+    np.random.seed(42)
     X = np.random.randn(10, 5).astype(np.float32)
     y = np.random.randint(0, 3, 10)
     return X, y
 
+
 @pytest.fixture
 def sample_data_medium():
     """Create medium sample data for testing."""
+    np.random.seed(42)
     X = np.random.randn(50, 10).astype(np.float32)
     y = np.random.randint(0, 5, 50)
     return X, y
 
-@pytest.fixture
-def simple_linear_model():
-    """Create a simple linear model for testing."""
-    return Sequential(
-        Linear(10, 5),
-        ReLU(),
-        Linear(5, 3)
-    )
 
 @pytest.fixture
-def simple_cnn_model():
-    """Create a simple CNN model for testing."""
-    return Sequential(
-        Conv2D(1, 8, kernel_size=3, padding=1),
-        ReLU(),
-        MaxPool2D(kernel_size=2),
-        Flatten(),
-        Linear(8 * 14 * 14, 10)
-    )
+def blob_data():
+    """Generate blob data for clustering tests."""
+    try:
+        from sklearn.datasets import make_blobs
+        X, y = make_blobs(n_samples=300, centers=3, random_state=42)
+        return X, y
+    except ImportError:
+        # Fallback if sklearn not available
+        np.random.seed(42)
+        # Generate 3 clusters manually
+        cluster1 = np.random.randn(100, 2) + np.array([0, 0])
+        cluster2 = np.random.randn(100, 2) + np.array([5, 5])
+        cluster3 = np.random.randn(100, 2) + np.array([5, 0])
+        X = np.vstack([cluster1, cluster2, cluster3])
+        y = np.array([0]*100 + [1]*100 + [2]*100)
+        return X, y
 
-def assert_tensors_close(t1, t2, rtol=1e-5, atol=1e-6):
-    """Assert that two tensors are close in value."""
-    if hasattr(t1, 'data'):
-        t1_data = t1.data
-    else:
-        t1_data = t1
-    
-    if hasattr(t2, 'data'):
-        t2_data = t2.data
-    else:
-        t2_data = t2
-        
-    np.testing.assert_allclose(t1_data, t2_data, rtol=rtol, atol=atol)
 
-def assert_gradient_close(tensor, expected_grad, rtol=1e-5, atol=1e-6):
-    """Assert that tensor gradient is close to expected."""
-    assert tensor.grad is not None, "Gradient should not be None"
-    np.testing.assert_allclose(tensor.grad, expected_grad, rtol=rtol, atol=atol)
+@pytest.fixture
+def regression_data():
+    """Generate simple regression data."""
+    np.random.seed(42)
+    X = np.random.randn(100, 1)
+    y = 2 * X.squeeze() + 1 + np.random.randn(100) * 0.1
+    return X, y
+
+
+def assert_arrays_close(arr1, arr2, rtol=1e-5, atol=1e-6):
+    """Assert that two arrays are close in value."""
+    np.testing.assert_allclose(arr1, arr2, rtol=rtol, atol=atol)
+
+
+def assert_shape_equal(arr, expected_shape):
+    """Assert that array has expected shape."""
+    assert arr.shape == expected_shape, f"Expected shape {expected_shape}, got {arr.shape}"
+
 
 def numerical_gradient(func, x, h=1e-5):
     """Compute numerical gradient for testing automatic differentiation."""
-    grad = np.zeros_like(x.data)
-    it = np.nditer(x.data, flags=['multi_index'])
+    grad = np.zeros_like(x)
+    it = np.nditer(x, flags=['multi_index'])
     
     while not it.finished:
         idx = it.multi_index
-        old_value = x.data[idx]
+        old_value = x[idx]
         
-        x.data[idx] = old_value + h
-        pos_output = func(x).item()
+        x[idx] = old_value + h
+        pos_output = func(x)
         
-        x.data[idx] = old_value - h  
-        neg_output = func(x).item()
+        x[idx] = old_value - h  
+        neg_output = func(x)
         
         grad[idx] = (pos_output - neg_output) / (2 * h)
-        x.data[idx] = old_value
+        x[idx] = old_value
         
         it.iternext()
     
@@ -118,7 +109,7 @@ def numerical_gradient(func, x, h=1e-5):
 '''
 
 # Save conftest.py
-with open('tests/conftest.py', 'w') as f:
+with open('test/conftest.py', 'w') as f:
     f.write(conftest_content)
     
 print("Created conftest.py with common fixtures and utilities")

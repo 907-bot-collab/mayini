@@ -109,7 +109,7 @@ def numerical_gradient(func, x, h=1e-5):
 '''
 
 # Save conftest.py
-with open('test/conftest.py', 'w') as f:
+with open('conftest.py', 'w') as f:
     f.write(conftest_content)
     
 print("Created conftest.py with common fixtures and utilities")

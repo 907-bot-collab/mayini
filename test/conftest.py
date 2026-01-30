@@ -10,12 +10,22 @@ import os
 # Add src to path for testing
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-# Import mayini components
-import mayini as mn
-from mayini.nn import *
-from mayini.optim import *
-from mayini.training import *
+# Import mayini components (with error handling for missing modules)
+try:
+    import mayini as mn
+except ImportError:
+    mn = None
 
+try:
+    from mayini.nn import Sequential, Linear, ReLU, Conv2D, MaxPool2D, Flatten
+except ImportError:
+    Sequential = Linear = ReLU = Conv2D = MaxPool2D = Flatten = None
+
+try:
+    from mayini.optim import SGD, Adam
+except ImportError:
+    SGD = Adam = None
+    
 @pytest.fixture
 def sample_tensor_2d():
     """Create a sample 2D tensor for testing."""
@@ -108,7 +118,7 @@ def numerical_gradient(func, x, h=1e-5):
 '''
 
 # Save conftest.py
-with open('conftest.py', 'w') as f:
+with open('test/conftest.py', 'w') as f:
     f.write(conftest_content)
     
 print("Created conftest.py with common fixtures and utilities")

@@ -76,10 +76,24 @@ class KMeans(BaseEstimator, ClusterMixin):
         )
         return np.argmin(distances, axis=1)
 
-    def fit_predict(self, X):
-        """Fit and predict"""
+    def fit(self, X):
+        # ... existing fit method code ...
+        return self
+    
+    def fit_predict(self, X):  # <-- ADD THIS ENTIRE METHOD HERE
+        """
+        Fit the model and return cluster labels
+        
+        Parameters:
+        X : array-like, shape (n_samples, n_features)
+            Training data
+            
+        Returns:
+        labels : array, shape (n_samples,)
+            Cluster labels for each point
+        """
         self.fit(X)
-        return self.labels_
+        return self.labels_labels_
 
 
 class DBSCAN(BaseEstimator, ClusterMixin):

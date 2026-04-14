@@ -4,7 +4,7 @@ A comprehensive deep learning framework built from scratch in Python.
 Includes: DeepLearning, Machine Learning, NEAT, Automated Preprocessing
 """
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 __author__ = "Abhishek Adari"
 __email__ = "abhishekadari85@gmail.com"
 

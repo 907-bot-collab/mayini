@@ -18,8 +18,9 @@ class LabelEncoder(BaseTransformer):
         super().__init__()
         self.classes_ = None
         self.class_to_index_ = None
+        self._input_shape = None
 
-    def fit(self, y):
+    def fit(self, y, X=None):
         """
         Fit label encoder
 
@@ -32,8 +33,10 @@ class LabelEncoder(BaseTransformer):
         -------
         self
         """
-        y = np.asarray(y)
-        self.classes_ = np.unique(y)
+        y_arr = np.asarray(y)
+        self._input_shape = y_arr.shape
+        y_flat = y_arr.flatten()
+        self.classes_ = np.unique(y_flat)
         self.class_to_index_ = {c: i for i, c in enumerate(self.classes_)}
         self.is_fitted_ = True
         return self
@@ -41,8 +44,13 @@ class LabelEncoder(BaseTransformer):
     def transform(self, y):
         """Transform labels to normalized encoding"""
         self._check_is_fitted()
-        y = np.asarray(y)
-        return np.array([self.class_to_index_[val] for val in y])
+        y_arr = np.asarray(y)
+        y_flat = y_arr.flatten()
+        result = np.array([self.class_to_index_[val] for val in y_flat])
+        
+        if len(y_arr.shape) == 2 and y_arr.shape[1] == 1:
+            return result.reshape(-1, 1)
+        return result
 
     def inverse_transform(self, y):
         """Transform labels back to original encoding"""

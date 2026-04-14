@@ -27,7 +27,7 @@ class Species:
     >>> species = Species(genome, species_id=0)
     """
 
-    def __init__(self, representative, species_id):
+    def __init__(self, representative, species_id=0):
         self.representative = representative
         self.species_id = species_id
         self.members = []
@@ -63,6 +63,10 @@ class Species:
         if not self.members:
             return 0
         return np.mean([g.fitness for g in self.members])
+
+    def calculate_average_fitness(self):
+        """Alias for get_average_fitness"""
+        return self.get_average_fitness()
 
     def cull(self, survival_threshold=0.2):
         """

@@ -33,11 +33,11 @@ class Spectrogram:
         """
         # Create window
         if window == 'hann':
-            win = signal.hann(n_fft)
+            win = signal.windows.hann(n_fft)
         elif window == 'hamming':
-            win = signal.hamming(n_fft)
+            win = signal.windows.hamming(n_fft)
         elif window == 'blackman':
-            win = signal.blackman(n_fft)
+            win = signal.windows.blackman(n_fft)
         else:
             win = np.ones(n_fft)
         

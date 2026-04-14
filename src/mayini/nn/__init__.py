@@ -56,25 +56,3 @@ __all__ = [
     "BCELoss",
     "HuberLoss",
 ]
-
-__all__ = []
-
-
-# ============================================================================
-# FILE 49: src/mayini/optim/__init__.py
-# BLACK-FORMATTED VERSION
-# ============================================================================
-
-"""Optimizer utilities"""
-
-# Note: This is a minimal implementation as the main optimizer
-# functionality already exists in the mayini library
-
-__all__ = []
-
-
-# ============================================================================
-# FILE 50: src/mayini/__init__.py (Main init - if needed for completeness)
-# BLACK-FORMATTED VERSION
-# ============================================================================
-

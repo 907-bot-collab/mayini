@@ -328,3 +328,6 @@ class BinaryVectorizer:
         """Fit and transform"""
         self.fit(documents)
         return self.transform(documents)
+
+
+TfidfVectorizer = TFIDFVectorizer

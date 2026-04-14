@@ -1,5 +1,4 @@
-# Create the main conftest.py file with fixtures and common utilities
-conftest_content ='''"""
+"""
 Pytest configuration and common fixtures for mayini framework tests.
 """
 import pytest
@@ -14,19 +13,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 @pytest.fixture
 def sample_tensor_2d():
     """Create a sample 2D numpy array for testing."""
-    return np.array([[1.0, 2.0], [3.0, 4.0]])
+    import mayini as mn
+    return mn.Tensor([[1.0, 2.0], [3.0, 4.0]], requires_grad=True)
 
 
 @pytest.fixture
 def sample_tensor_1d():
     """Create a sample 1D numpy array for testing."""
-    return np.array([1.0, 2.0, 3.0, 4.0])
+    import mayini as mn
+    return mn.Tensor([1.0, 2.0, 3.0, 4.0], requires_grad=True)
 
 
 @pytest.fixture
 def sample_tensor_scalar():
     """Create a sample scalar for testing."""
-    return 5.0
+    import mayini as mn
+    return mn.Tensor(5.0, requires_grad=True)
 
 
 @pytest.fixture
@@ -77,7 +79,17 @@ def regression_data():
 
 def assert_arrays_close(arr1, arr2, rtol=1e-5, atol=1e-6):
     """Assert that two arrays are close in value."""
+    # Handle mayini Tensors by converting to numpy
+    if hasattr(arr1, 'numpy'):
+        arr1 = arr1.numpy()
+    if hasattr(arr2, 'numpy'):
+        arr2 = arr2.numpy()
     np.testing.assert_allclose(arr1, arr2, rtol=rtol, atol=atol)
+
+
+# Aliases for backwards compatibility
+assert_tensors_close = assert_arrays_close
+assert_gradient_close = assert_arrays_close
 
 
 def assert_shape_equal(arr, expected_shape):
@@ -106,10 +118,3 @@ def numerical_gradient(func, x, h=1e-5):
         it.iternext()
     
     return grad
-'''
-
-# Save conftest.py
-with open('test/conftest.py', 'w') as f:
-    f.write(conftest_content)
-    
-print("Created conftest.py with common fixtures and utilities")

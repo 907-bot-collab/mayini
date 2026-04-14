@@ -3,135 +3,16 @@ Base classes for ML algorithms in Mayini framework.
 """
 
 import numpy as np
-
-class BaseClassifier:
-    """
-    Base class for all classifiers in mayini.ml
-    
-    All classifiers should inherit from this class and implement
-    the fit(), predict(), and predict_proba() methods.
-    """
-    
-    def __init__(self):
-        self.is_fitted = False
-        self.classes_ = None
-        self.n_classes_ = None
-    
-    def fit(self, X, y):
-        """
-        Fit the classifier to training data.
-        
-        Parameters:
-        -----------
-        X : array-like of shape (n_samples, n_features)
-            Training data
-        y : array-like of shape (n_samples,)
-            Target values
-            
-        Returns:
-        --------
-        self : object
-            Returns self for method chaining
-        """
-        raise NotImplementedError("Subclasses must implement fit()")
-    
-    def predict(self, X):
-        """
-        Predict class labels for samples in X.
-        
-        Parameters:
-        -----------
-        X : array-like of shape (n_samples, n_features)
-            Test samples
-            
-        Returns:
-        --------
-        y_pred : array-like of shape (n_samples,)
-            Predicted class labels
-        """
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before prediction")
-        raise NotImplementedError("Subclasses must implement predict()")
-    
-    def predict_proba(self, X):
-        """
-        Predict class probabilities for samples in X.
-        
-        Parameters:
-        -----------
-        X : array-like of shape (n_samples, n_features)
-            Test samples
-            
-        Returns:
-        --------
-        proba : array-like of shape (n_samples, n_classes)
-            Class probabilities
-        """
-        raise NotImplementedError("predict_proba not implemented")
-    
-    def score(self, X, y):
-        """
-        Return the mean accuracy on the given test data and labels.
-        
-        Parameters:
-        -----------
-        X : array-like of shape (n_samples, n_features)
-            Test samples
-        y : array-like of shape (n_samples,)
-            True labels
-            
-        Returns:
-        --------
-        score : float
-            Mean accuracy
-        """
-        y_pred = self.predict(X)
-        return np.mean(y_pred == y)
-    
-    def _check_is_fitted(self):
-        """Check if the estimator has been fitted."""
-        if not self.is_fitted:
-            raise RuntimeError(
-                "This {} instance is not fitted yet. Call 'fit' first."
-                .format(self.__class__.__name__)
-            )
-
-
-class BaseRegressor:
-    """
-    Base class for all regressors in mayini.ml
-    """
-    
-    def __init__(self):
-        self.is_fitted = False
-    
-    def fit(self, X, y):
-        """Fit the regressor to training data."""
-        raise NotImplementedError("Subclasses must implement fit()")
-    
-    def predict(self, X):
-        """Predict values for samples in X."""
-        if not self.is_fitted:
-            raise RuntimeError("Model must be fitted before prediction")
-        raise NotImplementedError("Subclasses must implement predict()")
-    
-    def score(self, X, y):
-        """Return R^2 score."""
-        y_pred = self.predict(X)
-        ss_res = np.sum((y - y_pred) ** 2)
-        ss_tot = np.sum((y - np.mean(y)) ** 2)
-        return 1 - (ss_res / ss_tot)
-"""Base classes for all machine learning models"""
-import numpy as np
 from abc import ABC, abstractmethod
 
 
 class BaseEstimator(ABC):
     """
     Base class for all estimators in mayini
-    
-    All estimators should inherit from this class.
     """
+
+    def __init__(self):
+        self.is_fitted_ = False
 
     @abstractmethod
     def fit(self, X, y=None):
@@ -148,7 +29,7 @@ class BaseEstimator(ABC):
         return {
             key: value
             for key, value in self.__dict__.items()
-            if not key.startswith("_")
+            if not key.startswith("_") and not key.endswith("_")
         }
 
     def set_params(self, **params):
@@ -156,6 +37,21 @@ class BaseEstimator(ABC):
         for key, value in params.items():
             setattr(self, key, value)
         return self
+
+    def _validate_input(self, X, y=None):
+        """Validate input X and y"""
+        X = np.array(X)
+        if y is not None:
+            y = np.array(y)
+        return X, y
+
+    def _check_is_fitted(self):
+        """Check if the estimator has been fitted."""
+        if not hasattr(self, 'is_fitted_') or not self.is_fitted_:
+            raise RuntimeError(
+                "This {} instance is not fitted yet. Call 'fit' first."
+                .format(self.__class__.__name__)
+            )
 
 
 class ClassifierMixin:
@@ -175,6 +71,9 @@ class RegressorMixin:
         predictions = self.predict(X)
         ss_res = np.sum((y - predictions) ** 2)
         ss_tot = np.sum((y - np.mean(y)) ** 2)
+        # Avoid division by zero
+        if ss_tot == 0:
+            return 0.0
         return 1 - (ss_res / ss_tot)
 
 
@@ -183,7 +82,8 @@ class ClusterMixin:
 
     def fit_predict(self, X):
         """Fit and predict in one step"""
-        return self.fit(X).predict(X)
+        self.fit(X)
+        return getattr(self, "labels_", self.predict(X))
 
 
 class TransformerMixin:
@@ -192,3 +92,13 @@ class TransformerMixin:
     def fit_transform(self, X, y=None):
         """Fit and transform in one step"""
         return self.fit(X, y).transform(X)
+
+
+class BaseClassifier(BaseEstimator, ClassifierMixin):
+    """Base class for all classifiers"""
+    pass
+
+
+class BaseRegressor(BaseEstimator, RegressorMixin):
+    """Base class for all regressors"""
+    pass

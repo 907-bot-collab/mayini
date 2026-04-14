@@ -382,3 +382,17 @@ class WordPieceTokenizer:
                 i += 1
         
         return np.array(tokens, dtype=np.int32)
+
+
+class NGramTokenizer(Tokenizer):
+    """
+    Tokenizer that specifically focuses on generating n-grams
+    """
+
+    def __init__(self, n=2, lowercase=True):
+        super().__init__(tokenization_type="word", lowercase=lowercase)
+        self.n = n
+
+    def tokenize(self, text: str) -> List[str]:
+        ngrams = self.get_ngrams(text, n=self.n)
+        return [" ".join(ngram) for ngram in ngrams]

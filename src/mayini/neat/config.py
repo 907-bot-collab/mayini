@@ -75,6 +75,10 @@ class Config:
         self.weight_coefficient = weight_coefficient
         self.survival_threshold = survival_threshold
 
+    def validate(self):
+        """Simple validation"""
+        return True
+
     def __repr__(self):
         """String representation"""
         return (

@@ -164,3 +164,81 @@ class LocalOutlierFactor(BaseTransformer):
     def fit_predict(self, X):
         """Fit and predict in one step"""
         return self.fit(X).predict(X)
+
+
+class OutlierDetector(BaseTransformer):
+    """
+    Unified interface for outlier detection
+
+    Parameters
+    ----------
+    method : str, default='iqr'
+        Method for outlier detection ('iqr', 'zscore', 'isolation_forest', 'lof')
+    action : str, default='remove'
+        Action to take ('remove', 'cap', 'flag')
+    **kwargs : dict
+        Additional parameters for the method
+    """
+
+    def __init__(self, method="iqr", action="remove", **kwargs):
+        super().__init__()
+        self.method = method
+        self.action = action
+        self.kwargs = kwargs
+        self.detector = None
+
+    def fit(self, X, y=None):
+        """Fit the outlier detector"""
+        X, _ = self._validate_input(X)
+
+        if self.method == "isolation_forest":
+            self.detector = IsolationForest(**self.kwargs)
+            self.detector.fit(X)
+        elif self.method == "lof":
+            self.detector = LocalOutlierFactor(**self.kwargs)
+            self.detector.fit(X)
+        elif self.method == "iqr":
+            # Compute IQR thresholds
+            self.q1_ = np.percentile(X, 25, axis=0)
+            self.q3_ = np.percentile(X, 75, axis=0)
+            self.iqr_ = self.q3_ - self.q1_
+            self.lower_ = self.q1_ - 1.5 * self.iqr_
+            self.upper_ = self.q3_ + 1.5 * self.iqr_
+        elif self.method == "zscore":
+            self.mean_ = np.mean(X, axis=0)
+            self.std_ = np.std(X, axis=0)
+        else:
+            raise ValueError(f"Unknown outlier detection method: {self.method}")
+
+        self.is_fitted_ = True
+        return self
+
+    def transform(self, X):
+        """Handle outliers based on action"""
+        self._check_is_fitted()
+        X, _ = self._validate_input(X)
+
+        if self.method in ["isolation_forest", "lof"]:
+            # These return 1 for inliers, -1 for outliers
+            mask = self.detector.predict(X) == 1
+        elif self.method == "iqr":
+            mask = np.all((X >= self.lower_) & (X <= self.upper_), axis=1)
+        elif self.method == "zscore":
+            z_scores = np.abs((X - self.mean_) / (self.std_ + 1e-10))
+            threshold = self.kwargs.get("threshold", 3.0)
+            mask = np.all(z_scores <= threshold, axis=1)
+
+        if self.action == "remove":
+            return X[mask]
+        elif self.action == "cap":
+            if self.method == "iqr":
+                return np.clip(X, self.lower_, self.upper_)
+            else:
+                # Cap at 3 std for zscore
+                upper = self.mean_ + 3 * self.std_
+                lower = self.mean_ - 3 * self.std_
+                return np.clip(X, lower, upper)
+        elif self.action == "flag":
+            return mask.astype(int)
+
+        return X

@@ -4,7 +4,7 @@ Tests for the core Tensor class and automatic differentiation.
 import pytest
 import numpy as np
 import mayini as mn
-from conftest import assert_tensors_close, assert_gradient_close, numerical_gradient
+from mayini.utils import assert_tensors_close, assert_gradient_close, numerical_gradient
 
 class TestTensorBasics:
     """Test basic tensor operations and properties."""
@@ -247,7 +247,7 @@ class TestNumericalGradient:
 
     def test_numerical_vs_auto_diff(self):
         """Compare automatic differentiation with numerical gradients."""
-        x = mn.Tensor([1.0, 2.0], requires_grad=True)
+        x = mn.Tensor([1.0, 2.0], requires_grad=True, dtype=np.float64)
 
         def func(tensor):
             return (tensor ** 2).sum()

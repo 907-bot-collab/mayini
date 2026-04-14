@@ -261,7 +261,20 @@ class TextCleaner:
 
 class TextNormalizer:
     """Specialized text normalization operations"""
-    
+    def normalize(self, text: str, lowercase: bool = True, remove_accents: bool = True) -> str:
+        """Complete normalization pipeline"""
+        text = self.normalize_whitespace(text)
+        text = self.normalize_quotes(text)
+        text = self.normalize_hyphens(text)
+        text = self.remove_control_characters(text)
+        if remove_accents:
+            # Re-use logic or just use normalize_unicode
+            text = self.normalize_unicode(text, 'NFKD')
+            text = ''.join([c for c in text if not unicodedata.combining(c)])
+        if lowercase:
+            text = text.lower()
+        return text
+
     @staticmethod
     def normalize_whitespace(text: str) -> str:
         """Normalize whitespace"""

@@ -6,7 +6,7 @@ import numpy as np
 import mayini as mn
 from mayini.nn import *
 from mayini.nn.activations import *
-from conftest import assert_tensors_close, assert_gradient_close
+from mayini.utils import assert_tensors_close, assert_gradient_close
 
 class TestReLU:
     """Test ReLU activation function."""
@@ -294,7 +294,7 @@ class TestActivationGradients:
 
         assert x.grad is not None
         # Softmax gradient has specific properties we can check
-        assert x.grad.sum() == 0  # Jacobian rows sum to 0
+        assert np.allclose(x.grad.sum(), 0, atol=1e-5)  # Jacobian rows sum to 0
 
 class TestActivationNumericalStability:
     """Test numerical stability of activation functions."""

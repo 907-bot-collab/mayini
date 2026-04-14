@@ -30,9 +30,18 @@ def relu(x: Tensor) -> Tensor:
 
 def sigmoid(x: Tensor) -> Tensor:
     """Sigmoid activation function."""
-    # Numerical stability: clip extreme values
-    clipped_data = np.clip(x.data, -500, 500)
-    result_data = 1.0 / (1.0 + np.exp(-clipped_data))
+    x_data = x.data
+    result_data = np.zeros_like(x_data)
+    pos_mask = x_data >= 0
+    neg_mask = ~pos_mask
+
+    # Positive part: 1 / (1 + exp(-x))
+    # Clip only for exp calculation to prevent overflow warnings
+    result_data[pos_mask] = 1.0 / (1.0 + np.exp(-np.clip(x_data[pos_mask], -100, 100)))
+    
+    # Negative part: exp(x) / (1 + exp(x))
+    exp_x_neg = np.exp(np.clip(x_data[neg_mask], -100, 100))
+    result_data[neg_mask] = exp_x_neg / (1.0 + exp_x_neg)
 
     out = Tensor(result_data, requires_grad=x.requires_grad)
     out.op = "SigmoidBackward"

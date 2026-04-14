@@ -151,7 +151,7 @@ def test_feature_interactions():
 
 def test_count_vectorizer():
     """Test CountVectorizer"""
-    from mayini.preprocessing.text.vectorizers import CountVectorizer
+    from mayini.preprocessing.text.vectorizer import CountVectorizer
     
     docs = ["hello world", "hello python", "python world"]
     
@@ -165,7 +165,7 @@ def test_count_vectorizer():
 
 def test_tfidf_vectorizer():
     """Test TfidfVectorizer"""
-    from mayini.preprocessing.text.vectorizers import TfidfVectorizer
+    from mayini.preprocessing.text.vectorizer import TfidfVectorizer
     
     docs = ["hello world", "hello python", "python programming"]
     

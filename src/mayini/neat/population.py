@@ -34,7 +34,10 @@ class Population:
     >>> pop = Population(config, n_inputs=2, n_outputs=1)
     """
 
-    def __init__(self, config, n_inputs, n_outputs):
+    def __init__(self, config=None, n_inputs=None, n_outputs=None, pop_size=None):
+        if config is None:
+            from .config import Config
+            config = Config(population_size=pop_size or 100)
         self.config = config
         self.n_inputs = n_inputs
         self.n_outputs = n_outputs

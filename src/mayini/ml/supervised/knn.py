@@ -24,8 +24,9 @@ class KNN(BaseEstimator, ClassifierMixin):
     >>> predictions = knn.predict(X_test)
     """
 
-    def __init__(self, n_neighbors=5, weights="uniform", metric="euclidean"):
-        self.n_neighbors = n_neighbors
+    def __init__(self, n_neighbors=5, weights="uniform", metric="euclidean", k=None):
+        super().__init__()
+        self.n_neighbors = k if k is not None else n_neighbors
         self.weights = weights
         self.metric = metric
         self.X_train = None
@@ -35,6 +36,7 @@ class KNN(BaseEstimator, ClassifierMixin):
         """Fit the KNN model"""
         self.X_train = np.array(X)
         self.y_train = np.array(y)
+        self.is_fitted_ = True
         return self
 
     def _euclidean_distance(self, x1, x2):
@@ -43,6 +45,7 @@ class KNN(BaseEstimator, ClassifierMixin):
 
     def predict(self, X):
         """Predict class labels"""
+        self._check_is_fitted()
         X = np.array(X)
         predictions = []
 
@@ -66,6 +69,11 @@ class KNNClassifier(KNN):
     pass
 
 
+class KNeighborsClassifier(KNN):
+    """Alias for KNN Classifier"""
+    pass
+
+
 class KNNRegressor(BaseEstimator, RegressorMixin):
     """
     K-Nearest Neighbors Regressor
@@ -76,16 +84,10 @@ class KNNRegressor(BaseEstimator, RegressorMixin):
         Number of neighbors to use
     weights : str, default='uniform'
         Weight function
-    
-    Example
-    -------
-    >>> from mayini.ml import KNNRegressor
-    >>> knn = KNNRegressor(n_neighbors=3)
-    >>> knn.fit(X_train, y_train)
-    >>> predictions = knn.predict(X_test)
     """
 
     def __init__(self, n_neighbors=5, weights="uniform"):
+        super().__init__()
         self.n_neighbors = n_neighbors
         self.weights = weights
         self.X_train = None
@@ -95,6 +97,7 @@ class KNNRegressor(BaseEstimator, RegressorMixin):
         """Fit the KNN model"""
         self.X_train = np.array(X)
         self.y_train = np.array(y)
+        self.is_fitted_ = True
         return self
 
     def _euclidean_distance(self, x1, x2):
@@ -103,6 +106,7 @@ class KNNRegressor(BaseEstimator, RegressorMixin):
 
     def predict(self, X):
         """Predict continuous values"""
+        self._check_is_fitted()
         X = np.array(X)
         predictions = []
 
@@ -118,3 +122,8 @@ class KNNRegressor(BaseEstimator, RegressorMixin):
             predictions.append(np.mean(k_nearest_values))
 
         return np.array(predictions)
+
+
+class KNeighborsRegressor(KNNRegressor):
+    """Alias for KNN Regressor"""
+    pass

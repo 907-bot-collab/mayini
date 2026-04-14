@@ -104,8 +104,8 @@ class CrossEntropyLoss(Module):
         # Handle different target formats
         if targets.data.ndim == 1:  # Class indices
             # Convert to one-hot
-            batch_size = targets.data.shape
-            num_classes = predictions.data.shape
+            batch_size = targets.data.shape[0]
+            num_classes = predictions.data.shape[1]
             targets_one_hot = np.zeros((batch_size, num_classes))
             targets_one_hot[np.arange(batch_size), targets.data.astype(int)] = 1
             targets = Tensor(targets_one_hot)
@@ -123,46 +123,9 @@ class CrossEntropyLoss(Module):
 
     def _log_softmax(self, x: Tensor) -> Tensor:
         """Compute log softmax with numerical stability."""
-        # Subtract max for numerical stability
         x_max = Tensor(np.max(x.data, axis=1, keepdims=True))
         x_shifted = x - x_max
-
-        # Compute exp
-        exp_data = np.exp(x_shifted.data)
-        exp_tensor = Tensor(exp_data, requires_grad=x.requires_grad)
-        exp_tensor.op = "ExpBackward"
-        exp_tensor.is_leaf = False
-
-        def exp_backward():
-            if x_shifted.requires_grad and exp_tensor.grad is not None:
-                grad = exp_tensor.grad * exp_data
-                if x_shifted.grad is None:
-                    x_shifted.grad = grad
-                else:
-                    x_shifted.grad = x_shifted.grad + grad
-
-        exp_tensor._backward = exp_backward
-        exp_tensor.prev = {x_shifted}
-
-        # Compute log sum exp
-        sum_exp = exp_tensor.sum(axis=1, keepdims=True)
-        log_sum_exp_data = np.log(sum_exp.data)
-        log_sum_exp = Tensor(log_sum_exp_data, requires_grad=sum_exp.requires_grad)
-        log_sum_exp.op = "LogBackward"
-        log_sum_exp.is_leaf = False
-
-        def log_backward():
-            if sum_exp.requires_grad and log_sum_exp.grad is not None:
-                grad = log_sum_exp.grad / sum_exp.data
-                if sum_exp.grad is None:
-                    sum_exp.grad = grad
-                else:
-                    sum_exp.grad = sum_exp.grad + grad
-
-        log_sum_exp._backward = log_backward
-        log_sum_exp.prev = {sum_exp}
-
-        return x_shifted - log_sum_exp
+        return x_shifted - x_shifted.exp().sum(axis=1, keepdims=True).log()
 
     def __repr__(self):
         return f"CrossEntropyLoss(reduction='{self.reduction}')"
@@ -182,24 +145,8 @@ class BCELoss(Module):
         if not isinstance(targets, Tensor):
             targets = Tensor(targets)
 
-        # Clamp predictions for numerical stability
-        eps = 1e-7
-        pred_clamped_data = np.clip(predictions.data, eps, 1 - eps)
-        pred_clamped = Tensor(
-            pred_clamped_data, requires_grad=predictions.requires_grad
-        )
-
         # Compute BCE: -[y*log(p) + (1-y)*log(1-p)]
-        log_pred_data = np.log(pred_clamped_data)
-        log_pred = Tensor(log_pred_data, requires_grad=pred_clamped.requires_grad)
-
-        log_one_minus_pred_data = np.log(1 - pred_clamped_data)
-        log_one_minus_pred = Tensor(
-            log_one_minus_pred_data, requires_grad=pred_clamped.requires_grad
-        )
-
-        # BCE formula
-        bce = -(targets * log_pred + (Tensor(1.0) - targets) * log_one_minus_pred)
+        bce = -(targets * predictions.log() + (Tensor(1.0) - targets) * (Tensor(1.0) - predictions).log())
 
         # Apply reduction
         if self.reduction == "mean":

@@ -243,49 +243,32 @@ class PreprocessorWidget:
             self.preprocessor.metadata['sample_rate'] = sr
             self.preprocessor.modality = 'audio'
             
-            # Build pipeline
-            pipeline = []
-            
-            if 'MFCC' in operations:
-                pipeline.append({
-                    'operation': 'mfcc',
-                    'params': {'n_mfcc': mfcc_n_coeff}
-                })
-            
-            if 'Spectrogram' in operations:
-                pipeline.append({
-                    'operation': 'spectrogram',
-                    'params': {
-                        'n_fft': spec_n_fft,
-                        'hop_length': spec_hop_length
-                    }
-                })
+            # Separate transforms and features
+            transform_pipeline = []
+            feature_pipeline = []
             
             if 'Pitch Shift' in operations:
-                pipeline.append({
-                    'operation': 'pitch_shift',
-                    'params': {'semitones': pitch_semitones}
-                })
-            
+                transform_pipeline.append({'operation': 'pitch_shift', 'params': {'semitones': pitch_semitones}})
             if 'Effects' in operations:
-                pipeline.append({
-                    'operation': 'effects',
-                    'params': {'effect': effect_type}
-                })
+                transform_pipeline.append({'operation': 'effects', 'params': {'effect': effect_type}})
+                
+            if 'MFCC' in operations:
+                feature_pipeline.append({'operation': 'mfcc', 'params': {'n_mfcc': mfcc_n_coeff}})
+            elif 'Spectrogram' in operations:
+                feature_pipeline.append({'operation': 'spectrogram', 'params': {'n_fft': spec_n_fft, 'hop_length': spec_hop_length}})
+            elif 'Analysis' in operations:
+                feature_pipeline.append({'operation': 'analysis', 'params': {'type': 'tempo'}})
             
-            if 'Analysis' in operations:
-                pipeline.append({
-                    'operation': 'analysis',
-                    'params': {'type': 'tempo'}
-                })
+            # Combine safely (one feature max at the end of pipeline)
+            pipeline = transform_pipeline + feature_pipeline
             
             # Execute pipeline
             if not pipeline:
                 result = self.preprocessor.data
-                info_text = f"Audio loaded: {len(audio_data)} samples @ {sr}Hz"
+                info_text = f"Audio loaded: {len(audio_data)} samples @ {sr}Hz\nResult shape: {result.shape}"
             else:
                 result = self.preprocessor.preprocess(pipeline)
-                info_text = f"Processed audio: {len(audio_data)} samples @ {sr}Hz"
+                info_text = f"Processed audio with pipeline: {len(pipeline)} steps"
             
             self.last_result = result
             

@@ -8,7 +8,7 @@ from .feature_engineering.interactions import FeatureInteractions
 from .outlier_detection import IsolationForest, LocalOutlierFactor
 from .pipeline import Pipeline
 from .selection.variance import VarianceThreshold
-from .selection.correlation import CorrelationSelector
+from .selection.correlation import CorrelationSelector, CorrelationThreshold
 from .autopreprocessor import AutoPreprocessor
 
 
@@ -20,7 +20,8 @@ from .autopreprocessor import AutoPreprocessor
 from .text.tokenizer import (
     Tokenizer,
     CharacterTokenizer,
-    WordPieceTokenizer
+    WordPieceTokenizer,
+    NGramTokenizer
 )
 
 from .text.cleaner import (
@@ -154,6 +155,7 @@ __all__ = [
     "Pipeline",
     "VarianceThreshold",
     "CorrelationSelector",
+    "CorrelationThreshold",
     "AutoPreprocessor",
     # Text
     "Tokenizer",

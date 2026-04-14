@@ -398,10 +398,10 @@ class LogisticRegression(BaseEstimator, ClassifierMixin):
     array([1])
     """
     
-    def __init__(self, learning_rate=0.01, max_iter=1000, random_state=None):
+    def __init__(self, learning_rate=0.01, max_iter=1000, random_state=None, n_iterations=None):
         super().__init__()
         self.learning_rate = learning_rate
-        self.max_iter = max_iter
+        self.max_iter = n_iterations if n_iterations is not None else max_iter
         self.random_state = random_state
         self.coef_ = None
         self.intercept_ = None

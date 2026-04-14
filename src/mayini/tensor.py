@@ -11,12 +11,22 @@ class Tensor:
         self,
         data: Union[list, tuple, np.ndarray, float, int],
         requires_grad: bool = False,
-        dtype: type = np.float32,
+        dtype: Optional[type] = None,
     ):
         """Initialize tensor with data and gradient tracking."""
+        # Handle dtype inference
+        if dtype is None:
+            if isinstance(data, np.ndarray):
+                dtype = data.dtype
+            elif isinstance(data, Tensor):
+                dtype = data.data.dtype
+            else:
+                # Default to float32 for consistency
+                dtype = np.float32
+
         # Convert input to numpy array
-        if isinstance(data, (int, float)):
-            self.data = np.array(data, dtype=dtype)
+        if isinstance(data, Tensor):
+            self.data = np.array(data.data, dtype=dtype)
         else:
             self.data = np.array(data, dtype=dtype)
 
@@ -82,11 +92,13 @@ class Tensor:
     def __add__(self, other):
         """Element-wise addition with gradient support."""
         if not isinstance(other, Tensor):
-            other = Tensor(other)
+            other = Tensor(other, dtype=self.data.dtype)
 
         result_data = self.data + other.data
         out = Tensor(
-            result_data, requires_grad=(self.requires_grad or other.requires_grad)
+            result_data, 
+            requires_grad=(self.requires_grad or other.requires_grad),
+            dtype=self.data.dtype
         )
         out.op = "AddBackward"
         out.is_leaf = False
@@ -113,11 +125,13 @@ class Tensor:
     def __mul__(self, other):
         """Element-wise multiplication with gradient support."""
         if not isinstance(other, Tensor):
-            other = Tensor(other)
+            other = Tensor(other, dtype=self.data.dtype)
 
         result_data = self.data * other.data
         out = Tensor(
-            result_data, requires_grad=(self.requires_grad or other.requires_grad)
+            result_data, 
+            requires_grad=(self.requires_grad or other.requires_grad),
+            dtype=self.data.dtype
         )
         out.op = "MulBackward"
         out.is_leaf = False
@@ -142,13 +156,15 @@ class Tensor:
         return out
 
     def matmul(self, other):
-        """Matrix multiplication with proper gradient computation."""
+        """Matrix multiplication with gradient support."""
         if not isinstance(other, Tensor):
-            other = Tensor(other)
+            other = Tensor(other, dtype=self.data.dtype)
 
         result_data = np.dot(self.data, other.data)
         out = Tensor(
-            result_data, requires_grad=(self.requires_grad or other.requires_grad)
+            result_data, 
+            requires_grad=(self.requires_grad or other.requires_grad),
+            dtype=self.data.dtype
         )
         out.op = "MatMulBackward"
         out.is_leaf = False
@@ -177,7 +193,7 @@ class Tensor:
         assert isinstance(power, (int, float))
 
         result_data = np.power(self.data, power)
-        out = Tensor(result_data, requires_grad=self.requires_grad)
+        out = Tensor(result_data, requires_grad=self.requires_grad, dtype=self.data.dtype)
         out.op = f"PowBackward({power})"
         out.is_leaf = False
 
@@ -196,7 +212,7 @@ class Tensor:
     def sum(self, axis=None, keepdims=False):
         """Sum operation with gradient support."""
         result_data = np.sum(self.data, axis=axis, keepdims=keepdims)
-        out = Tensor(result_data, requires_grad=self.requires_grad)
+        out = Tensor(result_data, requires_grad=self.requires_grad, dtype=self.data.dtype)
         out.op = f"SumBackward(axis={axis})"
         out.is_leaf = False
 
@@ -243,7 +259,7 @@ class Tensor:
             shape = shape[0]
 
         result_data = self.data.reshape(shape)
-        out = Tensor(result_data, requires_grad=self.requires_grad)
+        out = Tensor(result_data, requires_grad=self.requires_grad, dtype=self.data.dtype)
         out.op = f"ReshapeBackward({shape})"
         out.is_leaf = False
 
@@ -262,7 +278,7 @@ class Tensor:
     def transpose(self, axes=None):
         """Transpose tensor dimensions."""
         result_data = np.transpose(self.data, axes)
-        out = Tensor(result_data, requires_grad=self.requires_grad)
+        out = Tensor(result_data, requires_grad=self.requires_grad, dtype=self.data.dtype)
         out.op = "TransposeBackward"
         out.is_leaf = False
 
@@ -278,6 +294,44 @@ class Tensor:
                 else:
                     grad = np.transpose(out.grad)
 
+                if self.grad is None:
+                    self.grad = grad
+                else:
+                    self.grad = self.grad + grad
+
+        out._backward = _backward
+        out.prev = {self}
+        return out
+
+    def log(self):
+        """Logarithm operation with gradient support."""
+        result_data = np.log(self.data + 1e-15)  # Add small epsilon for stability
+        out = Tensor(result_data, requires_grad=self.requires_grad, dtype=self.data.dtype)
+        out.op = "LogBackward"
+        out.is_leaf = False
+
+        def _backward():
+            if self.requires_grad:
+                grad = out.grad / (self.data + 1e-15)
+                if self.grad is None:
+                    self.grad = grad
+                else:
+                    self.grad = self.grad + grad
+
+        out._backward = _backward
+        out.prev = {self}
+        return out
+
+    def exp(self):
+        """Exponential operation with gradient support."""
+        result_data = np.exp(self.data)
+        out = Tensor(result_data, requires_grad=self.requires_grad, dtype=self.data.dtype)
+        out.op = "ExpBackward"
+        out.is_leaf = False
+
+        def _backward():
+            if self.requires_grad:
+                grad = out.grad * result_data
                 if self.grad is None:
                     self.grad = grad
                 else:
@@ -345,10 +399,10 @@ class Tensor:
 
     # Convenience methods
     def __neg__(self):
-        return self * Tensor(-1.0)
+        return self * Tensor(-1.0, dtype=self.data.dtype)
 
     def __sub__(self, other):
-        return self + (-other if isinstance(other, Tensor) else Tensor(-other))
+        return self + (-other if isinstance(other, Tensor) else Tensor(-other, dtype=self.data.dtype))
 
     def __truediv__(self, other):
         if isinstance(other, Tensor):
@@ -356,8 +410,57 @@ class Tensor:
         else:
             return self * (1.0 / other)
 
+    def __abs__(self):
+        result_data = np.abs(self.data)
+        out = Tensor(result_data, requires_grad=self.requires_grad, dtype=self.data.dtype)
+        out.op = "AbsBackward"
+        out.is_leaf = False
+
+        def _backward():
+            if self.requires_grad and out.grad is not None:
+                grad = out.grad * np.sign(self.data)
+                if self.grad is None:
+                    self.grad = grad
+                else:
+                    self.grad = self.grad + grad
+
+        out._backward = _backward
+        out.prev = {self}
+        return out
+
+    def __getitem__(self, idx):
+        result_data = self.data[idx]
+        out = Tensor(result_data, requires_grad=self.requires_grad, dtype=self.data.dtype)
+        out.op = f"GetItemBackward({idx})"
+        out.is_leaf = False
+
+        def _backward():
+            if self.requires_grad and out.grad is not None:
+                new_grad = np.zeros_like(self.data)
+                new_grad[idx] = out.grad
+                if self.grad is None:
+                    self.grad = new_grad
+                else:
+                    self.grad = self.grad + new_grad
+
+        out._backward = _backward
+        out.prev = {self}
+        return out
+
+    def __setitem__(self, idx, value):
+        if isinstance(value, Tensor):
+            self.data[idx] = value.data
+        else:
+            self.data[idx] = value
+
+    def __rsub__(self, other):
+        return Tensor(other, dtype=self.data.dtype) - self
+
+    def __rtruediv__(self, other):
+        return Tensor(other, dtype=self.data.dtype) / self
+
     def __radd__(self, other):
-        return Tensor(other) + self
+        return self + other
 
     def __rmul__(self, other):
-        return Tensor(other) * self
+        return self * other

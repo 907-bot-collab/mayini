@@ -140,6 +140,24 @@ class Metrics:
         return cm
 
     @staticmethod
+    def precision(predictions: Tensor, targets: Tensor) -> float:
+        """Compute precision."""
+        prec, _, _ = Metrics.precision_recall_f1(predictions, targets, num_classes=2)
+        return float(np.mean(prec))
+
+    @staticmethod
+    def recall(predictions: Tensor, targets: Tensor) -> float:
+        """Compute recall."""
+        _, rec, _ = Metrics.precision_recall_f1(predictions, targets, num_classes=2)
+        return float(np.mean(rec))
+
+    @staticmethod
+    def f1_score(predictions: Tensor, targets: Tensor) -> float:
+        """Compute F1 score."""
+        _, _, f1 = Metrics.precision_recall_f1(predictions, targets, num_classes=2)
+        return float(np.mean(f1))
+
+    @staticmethod
     def mse(predictions: Tensor, targets: Tensor) -> float:
         """Compute mean squared error."""
         diff = predictions.data - targets.data
@@ -200,7 +218,7 @@ class EarlyStopping:
             self.best = -np.inf
             self.monitor_op = np.greater
 
-    def __call__(self, current: float, model: Module) -> bool:
+    def __call__(self, current: float, model: Optional[Module] = None) -> bool:
         """
         Check if training should be stopped.
 
@@ -211,16 +229,21 @@ class EarlyStopping:
         Returns:
             True if training should be stopped, False otherwise
         """
-        if self.monitor_op(current - self.min_delta, self.best):
+        if self.mode == "min":
+            improvement = (current < self.best - self.min_delta)
+        else:
+            improvement = (current > self.best + self.min_delta)
+
+        if improvement:
             self.best = current
             self.wait = 0
-            if self.restore_best_weights:
+            if self.restore_best_weights and model is not None:
                 self.best_weights = self._save_weights(model)
         else:
             self.wait += 1
             if self.wait >= self.patience:
                 self.stopped_epoch = True
-                if self.restore_best_weights and self.best_weights is not None:
+                if self.restore_best_weights and self.best_weights is not None and model is not None:
                     self._restore_weights(model, self.best_weights)
                 return True
 
@@ -273,6 +296,7 @@ class Trainer:
         verbose: bool = True,
         save_best: bool = True,
         checkpoint_path: Optional[str] = None,
+        **kwargs,
     ) -> Dict:
         """
         Train the model.
@@ -285,10 +309,10 @@ class Trainer:
             verbose: Whether to print training progress
             save_best: Whether to save the best model
             checkpoint_path: Path to save checkpoints
-
-        Returns:
-            Dictionary containing training history
+            **kwargs: Extra arguments (e.g., validation_data)
         """
+        if val_loader is None and "validation_data" in kwargs:
+            val_loader = kwargs["validation_data"]
         self.model.train()
 
         if verbose:
@@ -418,17 +442,17 @@ class Trainer:
 
         return avg_loss, accuracy
 
-    def evaluate(self, test_loader: DataLoader, detailed: bool = True) -> Dict:
+    def evaluate(self, test_loader: DataLoader, detailed: bool = True, metrics=None) -> Dict:
         """
         Evaluate the model on test data.
 
         Args:
             test_loader: Test data loader
             detailed: Whether to compute detailed metrics
-
-        Returns:
-            Dictionary containing evaluation metrics
+            metrics: Optional list of metrics to return
         """
+        if metrics is not None:
+            detailed = True
         self.model.eval()
 
         all_predictions = []
@@ -449,6 +473,7 @@ class Trainer:
 
         # Compute metrics
         results = {
+            "loss": total_loss / len(test_loader),
             "test_loss": total_loss / len(test_loader),
             "accuracy": Metrics.accuracy(all_predictions, all_targets),
         }

@@ -3,6 +3,7 @@ from typing import Tuple, Optional
 from ..tensor import Tensor
 from .modules import Module
 from .activations import tanh, sigmoid
+from ..ops import concatenate
 
 
 class RNNCell(Module):
@@ -17,7 +18,7 @@ class RNNCell(Module):
         # Initialize weights
         std = 1.0 / np.sqrt(hidden_size)
         self.weight_ih = Tensor(
-            np.random.uniform(-std, std, (hidden_size, input_size)),
+            np.random.uniform(-std, std, (input_size, hidden_size)),
             requires_grad=True,
         )
         self.weight_hh = Tensor(
@@ -30,18 +31,21 @@ class RNNCell(Module):
         if bias:
             self.bias_ih = Tensor(np.zeros(hidden_size), requires_grad=True)
             self.bias_hh = Tensor(np.zeros(hidden_size), requires_grad=True)
+            # Add bias property for test compatibility
+            self.bias = self.bias_ih
             self._parameters.extend([self.bias_ih, self.bias_hh])
         else:
             self.bias_ih = None
             self.bias_hh = None
+            self.bias = None
 
     def forward(self, input_tensor: Tensor, hidden: Optional[Tensor] = None) -> Tensor:
         if hidden is None:
-            hidden = Tensor(np.zeros((input_tensor.shape, self.hidden_size)))
+            hidden = Tensor(np.zeros((input_tensor.shape[0], self.hidden_size)))
 
         # RNN computation: h_t = tanh(W_ih @ x_t + b_ih + W_hh @ h_{t-1} + b_hh)
-        ih_result = input_tensor.matmul(self.weight_ih.transpose())
-        hh_result = hidden.matmul(self.weight_hh.transpose())
+        ih_result = input_tensor.matmul(self.weight_ih)
+        hh_result = hidden.matmul(self.weight_hh)
 
         if self.use_bias:
             ih_result = ih_result + self.bias_ih
@@ -62,11 +66,11 @@ class LSTMCell(Module):
         # Initialize weights for all gates (forget, input, output, cell)
         std = 1.0 / np.sqrt(hidden_size)
         self.weight_ih = Tensor(
-            np.random.uniform(-std, std, (4 * hidden_size, input_size)),
+            np.random.uniform(-std, std, (input_size, 4 * hidden_size)),
             requires_grad=True,
         )
         self.weight_hh = Tensor(
-            np.random.uniform(-std, std, (4 * hidden_size, hidden_size)),
+            np.random.uniform(-std, std, (hidden_size, 4 * hidden_size)),
             requires_grad=True,
         )
 
@@ -75,24 +79,27 @@ class LSTMCell(Module):
         if bias:
             self.bias_ih = Tensor(np.zeros(4 * hidden_size), requires_grad=True)
             self.bias_hh = Tensor(np.zeros(4 * hidden_size), requires_grad=True)
+            # Add bias property for test compatibility
+            self.bias = self.bias_ih
             self._parameters.extend([self.bias_ih, self.bias_hh])
         else:
             self.bias_ih = None
             self.bias_hh = None
+            self.bias = None
 
     def forward(
         self, input_tensor: Tensor, state: Optional[Tuple[Tensor, Tensor]] = None
     ) -> Tuple[Tensor, Tensor]:
         if state is None:
-            batch_size = input_tensor.shape
+            batch_size = input_tensor.shape[0]
             hidden = Tensor(np.zeros((batch_size, self.hidden_size)))
             cell = Tensor(np.zeros((batch_size, self.hidden_size)))
         else:
             hidden, cell = state
 
         # Compute gates
-        ih_result = input_tensor.matmul(self.weight_ih.transpose())
-        hh_result = hidden.matmul(self.weight_hh.transpose())
+        ih_result = input_tensor.matmul(self.weight_ih)
+        hh_result = hidden.matmul(self.weight_hh)
 
         if self.use_bias:
             ih_result = ih_result + self.bias_ih
@@ -101,26 +108,11 @@ class LSTMCell(Module):
         gates = ih_result + hh_result
 
         # Split gates (forget, input, output, candidate)
-        # Note: This is a simplified implementation
         gate_size = self.hidden_size
-        forget_gate = sigmoid(
-            gates[:, :gate_size] if gates.data.ndim > 1 else gates[:gate_size]
-        )
-        input_gate = sigmoid(
-            gates[:, gate_size : 2 * gate_size]
-            if gates.data.ndim > 1
-            else gates[gate_size : 2 * gate_size]
-        )
-        output_gate = sigmoid(
-            gates[:, 2 * gate_size : 3 * gate_size]
-            if gates.data.ndim > 1
-            else gates[2 * gate_size : 3 * gate_size]
-        )
-        candidate_gate = tanh(
-            gates[:, 3 * gate_size :]
-            if gates.data.ndim > 1
-            else gates[3 * gate_size :]
-        )
+        forget_gate = sigmoid(gates[:, :gate_size])
+        input_gate = sigmoid(gates[:, gate_size : 2 * gate_size])
+        output_gate = sigmoid(gates[:, 2 * gate_size : 3 * gate_size])
+        candidate_gate = tanh(gates[:, 3 * gate_size :])
 
         # Update cell state
         new_cell = forget_gate * cell + input_gate * candidate_gate
@@ -143,11 +135,11 @@ class GRUCell(Module):
         # Initialize weights for reset and update gates
         std = 1.0 / np.sqrt(hidden_size)
         self.weight_ih = Tensor(
-            np.random.uniform(-std, std, (3 * hidden_size, input_size)),
+            np.random.uniform(-std, std, (input_size, 3 * hidden_size)),
             requires_grad=True,
         )
         self.weight_hh = Tensor(
-            np.random.uniform(-std, std, (3 * hidden_size, hidden_size)),
+            np.random.uniform(-std, std, (hidden_size, 3 * hidden_size)),
             requires_grad=True,
         )
 
@@ -156,18 +148,21 @@ class GRUCell(Module):
         if bias:
             self.bias_ih = Tensor(np.zeros(3 * hidden_size), requires_grad=True)
             self.bias_hh = Tensor(np.zeros(3 * hidden_size), requires_grad=True)
+            # Add bias property for test compatibility
+            self.bias = self.bias_ih
             self._parameters.extend([self.bias_ih, self.bias_hh])
         else:
             self.bias_ih = None
             self.bias_hh = None
+            self.bias = None
 
     def forward(self, input_tensor: Tensor, hidden: Optional[Tensor] = None) -> Tensor:
         if hidden is None:
-            hidden = Tensor(np.zeros((input_tensor.shape, self.hidden_size)))
+            hidden = Tensor(np.zeros((input_tensor.shape[0], self.hidden_size)))
 
         # Compute gates
-        ih_result = input_tensor.matmul(self.weight_ih.transpose())
-        hh_result = hidden.matmul(self.weight_hh.transpose())
+        ih_result = input_tensor.matmul(self.weight_ih)
+        hh_result = hidden.matmul(self.weight_hh)
 
         if self.use_bias:
             ih_result = ih_result + self.bias_ih
@@ -210,11 +205,12 @@ class RNN(Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.cell_type = cell_type.lower()
-        self.dropout = dropout
+        self.dropout_p = dropout
         self.batch_first = batch_first
 
-        # Create cells
+        # Create cells and dropout layers
         self.cells = []
+        self.dropouts = []
         for i in range(num_layers):
             if cell_type == "lstm":
                 cell = LSTMCell(input_size if i == 0 else hidden_size, hidden_size)
@@ -225,6 +221,15 @@ class RNN(Module):
 
             self.cells.append(cell)
             self._modules.append(cell)
+            
+            # Non-zero dropout between layers (not after the last layer)
+            if self.dropout_p > 0 and i < num_layers - 1:
+                from .modules import Dropout
+                drop = Dropout(self.dropout_p)
+                self.dropouts.append(drop)
+                self._modules.append(drop)
+            else:
+                self.dropouts.append(None)
 
     def forward(self, input_seq: Tensor, initial_states: Optional[list] = None):
         if not self.batch_first:
@@ -236,7 +241,7 @@ class RNN(Module):
         states = initial_states or [None] * self.num_layers
 
         for t in range(seq_len):
-            x = Tensor(input_seq.data[:, t, :])  # Get timestep t
+            x = input_seq[:, t, :]  # Get timestep t
 
             new_states = []
             for layer_idx, cell in enumerate(self.cells):
@@ -246,21 +251,33 @@ class RNN(Module):
                 else:
                     x = cell(x, states[layer_idx])
                     new_states.append(x)
+                
+                # Apply dropout if it's not the last layer
+                drop = self.dropouts[layer_idx]
+                if drop is not None:
+                    x = drop(x)
 
             outputs.append(x)
             states = new_states
 
         # Stack outputs: (batch, seq_len, hidden_size)
-        output_data = np.stack([out.data for out in outputs], axis=1)
-        output_tensor = Tensor(
-            output_data, requires_grad=any(out.requires_grad for out in outputs)
-        )
+        from ..ops import stack
+        output_tensor = stack(outputs, axis=1)
 
         if not self.batch_first:
             # Convert back to (seq_len, batch, features)
             output_tensor = output_tensor.transpose((1, 0, 2))
 
-        return output_tensor, states
+        # Format hidden states for return
+        if self.cell_type == "lstm":
+            h_states = [s[0] for s in states]
+            c_states = [s[1] for s in states]
+            h_tensor = stack(h_states, axis=0)
+            c_tensor = stack(c_states, axis=0)
+            return output_tensor, (h_tensor, c_tensor)
+        else:
+            h_tensor = stack(states, axis=0)
+            return output_tensor, h_tensor
 
 
 __all__ = ["RNNCell", "LSTMCell", "GRUCell", "RNN"]

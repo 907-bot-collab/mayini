@@ -65,7 +65,7 @@ def col2im_fixed(
 
     # Create padded image for accumulation
     img = np.zeros(
-        (N, C, H + 2 * padding * stride - 1, W + 2 * padding * stride - 1),
+        (N, C, H + 2 * padding, W + 2 * padding),
         dtype=col.dtype,
     )
 
@@ -140,11 +140,31 @@ class Sequential(Module):
             x = module(x)
         return x
 
+    @property
+    def layers(self):
+        return self._modules
+
     def __getitem__(self, idx):
         return self._modules[idx]
 
     def __len__(self):
         return len(self._modules)
+
+
+class Dropout(Module):
+    """Dropout layer."""
+
+    def __init__(self, p: float = 0.5):
+        super().__init__()
+        self.p = p
+
+    def forward(self, x: Tensor) -> Tensor:
+        if not self.training or self.p == 0:
+            return x
+
+        mask = (np.random.random(x.shape) > self.p).astype(x.dtype) / (1.0 - self.p)
+        return x * Tensor(mask, requires_grad=False)
+
 
     def append(self, module):
         self._modules.append(module)
@@ -175,12 +195,12 @@ class Linear(Module):
         # Initialize weights based on method
         if init_method == "xavier":
             limit = np.sqrt(6.0 / (in_features + out_features))
-            weight_data = np.random.uniform(-limit, limit, (out_features, in_features))
+            weight_data = np.random.uniform(-limit, limit, (in_features, out_features))
         elif init_method == "he":
             std = np.sqrt(2.0 / in_features)
-            weight_data = np.random.normal(0, std, (out_features, in_features))
+            weight_data = np.random.normal(0, std, (in_features, out_features))
         elif init_method == "normal":
-            weight_data = np.random.normal(0, 0.01, (out_features, in_features))
+            weight_data = np.random.normal(0, 0.01, (in_features, out_features))
         else:
             raise ValueError(f"Unknown initialization method: {init_method}")
 
@@ -195,29 +215,10 @@ class Linear(Module):
             self.bias = None
 
     def forward(self, x: Tensor) -> Tensor:
-        """Forward pass: y = x*W^T + b"""
-        # Transpose weight to get (in_features, out_features)
-        weight_t = Tensor(self.weight.data.T, requires_grad=self.weight.requires_grad)
-        weight_t.op = "TransposeBackward"
-        weight_t.is_leaf = False
-
-        def weight_backward():
-            if self.weight.requires_grad and weight_t.grad is not None:
-                if self.weight.grad is None:
-                    self.weight.grad = weight_t.grad.T
-                else:
-                    self.weight.grad = self.weight.grad + weight_t.grad.T
-
-        weight_t._backward = weight_backward
-        weight_t.prev = {self.weight}
-
-        # Matrix multiplication x @ weight_t
-        output = x.matmul(weight_t)
-
+        """Forward pass: y = xW + b"""
+        output = x.matmul(self.weight)
         if self.bias is not None:
-            # Broadcast bias across batch dimension
             output = output + self.bias
-
         return output
 
     def __repr__(self):
@@ -290,6 +291,26 @@ class Conv2D(Module):
             x.data, self.kernel_size, self.kernel_size, self.stride, self.padding
         )
         col_tensor = Tensor(col, requires_grad=x.requires_grad)
+        col_tensor.op = "Im2ColBackward"
+        col_tensor.is_leaf = False
+
+        def _col_backward():
+            if x.requires_grad and col_tensor.grad is not None:
+                grad_x = col2im_fixed(
+                    col_tensor.grad,
+                    x.shape,
+                    self.kernel_size,
+                    self.kernel_size,
+                    self.stride,
+                    self.padding,
+                )
+                if x.grad is None:
+                    x.grad = grad_x
+                else:
+                    x.grad = x.grad + grad_x
+
+        col_tensor._backward = _col_backward
+        col_tensor.prev = {x}
 
         # Reshape weights for matrix multiplication
         weight_reshaped = self.weight.reshape((self.out_channels, -1))

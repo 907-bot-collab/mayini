@@ -457,3 +457,9 @@ class SVM(SVC):
     """Alias for SVC - Support Vector Machine Classifier"""
 
     pass
+
+
+class LinearSVM(LinearSVC):
+    """Alias for LinearSVC"""
+
+    pass

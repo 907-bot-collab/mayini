@@ -12,10 +12,22 @@ from ..tensor import Tensor
 class Optimizer(ABC):
     """Base class for all optimizers."""
 
-    def __init__(self, parameters: List[Tensor], lr: float):
-        self.parameters = parameters
+    def __init__(self, parameters, lr: float):
         self.lr = lr
         self.step_count = 0
+        
+        if isinstance(parameters, (list, tuple)) and len(parameters) > 0 and isinstance(parameters[0], dict):
+            self.param_groups = parameters
+        else:
+            self.param_groups = [{'params': list(parameters), 'lr': lr}]
+
+    @property
+    def parameters(self) -> List[Tensor]:
+        """Return a list of all parameters being optimized."""
+        params = []
+        for group in self.param_groups:
+            params.extend(group['params'])
+        return params
 
     @abstractmethod
     def step(self):
@@ -82,14 +94,13 @@ class Adam(Optimizer):
         self,
         parameters: List[Tensor],
         lr: float = 0.001,
-        beta1: float = 0.9,
-        beta2: float = 0.999,
+        betas: tuple = (0.9, 0.999),
         eps: float = 1e-8,
         weight_decay: float = 0.0,
     ):
         super().__init__(parameters, lr)
-        self.beta1 = beta1
-        self.beta2 = beta2
+        self.beta1, self.beta2 = betas
+        self.betas = betas
         self.eps = eps
         self.weight_decay = weight_decay
 

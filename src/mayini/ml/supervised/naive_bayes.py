@@ -83,6 +83,17 @@ class GaussianNB(NaiveBayes):
         log_prior = np.log(self.class_prior_)
         log_posterior = log_likelihood + log_prior
         return self.classes_[np.argmax(log_posterior, axis=1)]
+        
+    def predict_proba(self, X):
+        """Predict class probabilities"""
+        X = np.array(X)
+        log_likelihood = self._calculate_likelihood(X)
+        log_prior = np.log(self.class_prior_)
+        log_posterior = log_likelihood + log_prior
+        
+        # Shift for numerical stability then exp
+        exp_posterior = np.exp(log_posterior - np.max(log_posterior, axis=1, keepdims=True))
+        return exp_posterior / np.sum(exp_posterior, axis=1, keepdims=True)
 
 
 class MultinomialNB(NaiveBayes):

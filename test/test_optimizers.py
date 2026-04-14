@@ -6,7 +6,7 @@ import numpy as np
 import mayini as mn
 from mayini.nn import *
 from mayini.optim import *
-from conftest import assert_tensors_close
+from mayini.utils import assert_tensors_close
 
 class TestSGD:
     """Test Stochastic Gradient Descent optimizer."""

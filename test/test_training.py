@@ -7,7 +7,7 @@ import mayini as mn
 from mayini.nn import *
 from mayini.optim import *
 from mayini.training import *
-from conftest import assert_tensors_close
+from mayini.utils import assert_tensors_close
 
 class TestDataLoader:
     """Test DataLoader functionality."""
@@ -59,10 +59,12 @@ class TestDataLoader:
         np.random.seed(42)
         dataloader1 = DataLoader(X, y, batch_size=20, shuffle=True)
 
-        np.random.seed(42) 
+        np.random.seed(42)
         dataloader2 = DataLoader(X, y, batch_size=20, shuffle=True)
 
+        np.random.seed(42)
         batch1 = next(iter(dataloader1))
+        np.random.seed(42)
         batch2 = next(iter(dataloader2))
 
         # Should be identical (same seed)
@@ -410,6 +412,7 @@ class TestTrainingIntegration:
         results = {}
 
         for opt_name, opt_factory in optimizers_to_test:
+            np.random.seed(42)
             model = create_model()
             optimizer = opt_factory(model.parameters())
             criterion = MSELoss()
@@ -417,9 +420,12 @@ class TestTrainingIntegration:
 
             dataloader = generate_data()
             history = trainer.fit(dataloader, epochs=30, verbose=False)
+            if opt_name == 'Adam':
+                print(f"Adam losses: {history['train_loss']}")
 
             results[opt_name] = history['train_loss'][-1]
 
+        print(f"\nOptimizer comparison results: {results}")
         # All optimizers should achieve reasonable performance
         for opt_name, final_loss in results.items():
             assert final_loss < 1.0  # Should be better than random

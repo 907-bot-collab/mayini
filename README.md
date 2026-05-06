@@ -16,12 +16,12 @@ Whether you're researching new topologies, learning the mathematics of backpropa
 Install Mayini directly from PyPI via pip:
 
 ```bash
-pip install mayini-framework==0.8.1
+pip install mayini-framework==0.9.0
 ```
 
 If you wish to edit the source code and contribute:
 ```bash
-git clone https://github.com/your-username/mayini.git
+git clone https://github.com/907-bot-collab/mayini.git
 cd mayini
 pip install -e .[dev]
 ```

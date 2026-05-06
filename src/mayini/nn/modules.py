@@ -106,6 +106,14 @@ class Module(ABC):
             params.extend(module.parameters())
         return params
 
+    def named_parameters(self):
+        """Yield (name, parameter) pairs recursively."""
+        for idx, param in enumerate(self._parameters):
+            yield (f"param_{idx}", param)
+        for module_idx, module in enumerate(self._modules):
+            for child_name, child_param in module.named_parameters():
+                yield (f"module_{module_idx}.{child_name}", child_param)
+
     def zero_grad(self):
         """Zero all parameter gradients."""
         for param in self.parameters():

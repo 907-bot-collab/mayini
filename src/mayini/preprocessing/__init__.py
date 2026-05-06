@@ -127,7 +127,10 @@ from .video.features import (
 
 # AUTOMATED PREPROCESSOR & WIDGET
 from .preprocess import AutomatedPreprocessor
-from .widget import PreprocessorWidget, launch_widget
+try:
+    from .widget import PreprocessorWidget, launch_widget
+except Exception as _widget_import_error:
+    raise
 
 
 # ============================================================================

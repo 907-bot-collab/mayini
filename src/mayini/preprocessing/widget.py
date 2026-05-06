@@ -1,11 +1,19 @@
 
-import gradio as gr
 import numpy as np
 from typing import Optional, List, Dict, Any, Tuple
 from pathlib import Path
-import json
 
 from .preprocess import AutomatedPreprocessor
+
+def _load_gradio():
+    try:
+        import gradio as gr
+        return gr
+    except Exception as _gradio_import_error:
+        raise ImportError(
+            "Gradio UI dependencies are not installed. Install optional UI deps "
+            "to use create_interface()/launch_widget."
+        ) from _gradio_import_error
 
 
 class PreprocessorWidget:
@@ -340,7 +348,7 @@ For large videos, process frames incrementally."""
     # GRADIO INTERFACE CREATION
     # ========================================================================
     
-    def create_interface(self) -> gr.Blocks:
+    def create_interface(self) -> Any:
         """
         Create the Gradio interface with all tabs and controls
         
@@ -348,7 +356,7 @@ For large videos, process frames incrementally."""
         --------
         gr.Blocks : Gradio interface
         """
-        
+        gr = _load_gradio()
         with gr.Blocks(
             title="Mayini Automated Preprocessor",
             theme=gr.themes.Soft(),
